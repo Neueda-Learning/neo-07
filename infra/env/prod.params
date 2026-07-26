@@ -1,0 +1,14 @@
+# neo-07's OWN service (module 01: Card Account Setup), on prod. Identical to
+# dev.params — a module carries no environment-specific values (the orchestrator URL is built
+# from the Cloud Map namespace in the template). The pipeline adds EnvironmentName + the
+# PINNED @sha256 images + DbEndpoint + AlbDnsName.
+ServiceName=neo-07
+Role=module
+PathPrefix=/neo-07
+ListenerRulePriority=70
+DbName=neo_07
+ServiceId=neo07
+DisplayName=Card Account Setup
+Domain=account
+Team=Team 07
+MockedDependencies=core-banking
