@@ -255,3 +255,6 @@ CI sets `CI=true`, which activates the `integration` profile and runs it for rea
 ## Local setup note
 
 Verified locally on 2026-07-27: `docker compose up --build` runs, all four containers reach healthy, and the sidecar's `SIM-01` dispatch completes the full 202 → ACCEPTED callback loop.
+
+## Team Name
+Trans4mer
