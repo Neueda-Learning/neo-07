@@ -251,3 +251,7 @@ CI sets `CI=true`, which activates the `integration` profile and runs it for rea
   add a change set, never edit an applied one.
 - `backend/` and `frontend/` **stay at the repo root** — the system compose builds
   `./neo-07/backend` and `./neo-07/frontend` by path.
+
+## Local setup note
+
+Verified locally on 2026-07-27: `docker compose up --build` runs, all four containers reach healthy, and the sidecar's `SIM-01` dispatch completes the full 202 → ACCEPTED callback loop.
