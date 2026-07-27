@@ -249,5 +249,5 @@ CI sets `CI=true`, which activates the `integration` profile and runs it for rea
 - **Own schema only.** This service reads and writes its own MySQL schema, never another's.
 - **Liquibase owns the schema**; JPA runs `ddl-auto=validate`. Migrations are append-only —
   add a change set, never edit an applied one.
-- `backend/` and `frontend/` **stay at the repo root** — the system compose builds
+- `backend/` and `frontend/` **stay at the repo root** — the system compose builds.
   `./neo-07/backend` and `./neo-07/frontend` by path.
