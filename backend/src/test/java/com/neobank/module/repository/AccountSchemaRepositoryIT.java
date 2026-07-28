@@ -21,7 +21,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Proves that Liquibase 002 and the four JPA mappings agree on the deployed database family.
+ * Proves that Liquibase 002-007 and the four JPA mappings agree on the deployed database
+ * family.
  */
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
@@ -55,17 +56,31 @@ class AccountSchemaRepositoryIT {
     ObjectMapper objectMapper;
 
     @Test
-    void schemaStartsWithoutInventingAnInvalidCatalogueSeed() {
+    void schemaStartsWithOnlyTheSeededCoreConfigVersion() {
         assertThat(accounts.findAll()).isEmpty();
-        assertThat(configs.findAll()).isEmpty();
         assertThat(attempts.findAll()).isEmpty();
         assertThat(overrides.findAll()).isEmpty();
+        assertThat(configs.findAll()).hasSize(1);
+    }
+
+    @Test
+    void coreConfigV1IsSeededOnFirstBoot() {
+        // UC-08 AC#2 checkpoint.
+        CoreConfig seed = configs.findTopByOrderByVersionDesc().orElseThrow();
+
+        assertThat(seed.getVersion()).isEqualTo(1);
+        assertThat(seed.getRetryBudget()).isEqualTo(3);
+        assertThat(seed.getTimeoutMs()).isEqualTo(2000);
+        assertThat(seed.getCatalogue().has("CREDIT_CARD_STANDARD")).isTrue();
+        assertThat(seed.getCatalogue().has("CREDIT_CARD_REWARDS")).isTrue();
+        assertThat(seed.getCatalogue().has("CREDIT_CARD_STUDENT")).isTrue();
     }
 
     @Test
     void domainRowsAndAuditChildrenRoundTrip() throws Exception {
+        // version 2: the seeded 007 changeset already occupies version 1 on a fresh schema.
         configs.saveAndFlush(new CoreConfig(
-                1,
+                2,
                 3,
                 2000,
                 "http://mock-core:8090",
@@ -74,7 +89,7 @@ class AccountSchemaRepositoryIT {
                         """)));
 
         AccountRecord account = new AccountRecord("APP-1", "acc-APP-1");
-        account.pinCoreConfig(1);
+        account.pinCoreConfig(2);
         accounts.saveAndFlush(account);
 
         attempts.saveAndFlush(new CoreAttempt(
@@ -95,7 +110,7 @@ class AccountSchemaRepositoryIT {
 
         AccountRecord reloaded = accounts.findById("APP-1").orElseThrow();
         assertThat(reloaded.getOutcome()).isEqualTo(AccountOutcome.IN_PROGRESS);
-        assertThat(reloaded.getCoreConfigVersion()).isEqualTo(1);
+        assertThat(reloaded.getCoreConfigVersion()).isEqualTo(2);
         assertThat(reloaded.getCreatedAt()).isNotNull();
 
         assertThat(attempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc("APP-1"))

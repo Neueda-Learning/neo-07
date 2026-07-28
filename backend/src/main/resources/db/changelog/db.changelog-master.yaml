@@ -14,3 +14,5 @@ databaseChangeLog:
       file: db/changelog/changes/005-restore-domain-nullability.yaml
   - include:
       file: db/changelog/changes/006-enforce-mysql-fallback-definition.yaml
+  - include:
+      file: db/changelog/changes/007-seed-core-config.yaml
