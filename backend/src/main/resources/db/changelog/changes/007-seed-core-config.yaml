@@ -1,0 +1,42 @@
+# UC-08 AC#2 checkpoint: CoreConfig v1 must exist on first boot (retryBudget 3, timeoutMs
+# 2000, catalogue covering the three locked product codes).
+#
+# PLACEHOLDER CATALOGUE NUMBERS. Only CREDIT_CARD_REWARDS's apr/limitMin/limitMax (24.9,
+# 500, 10000) are the real value published in the UC-08 brief. CREDIT_CARD_STANDARD and
+# CREDIT_CARD_STUDENT's figures below are reasonable placeholders, not the locked platform
+# catalogue -- neither this repo nor neo-00 (the orchestrator repo, including its
+# api-contract.md) publishes the full three-product catalogue anywhere. Per
+# docs/contract-and-data-decisions.md ("Deliberately unresolved"), correct these with a new
+# insert-only changeset once the real numbers are known -- never edit this one.
+#
+# coreBaseUrl points at this same backend instance, where UC-05's mock core lives.
+databaseChangeLog:
+  - changeSet:
+      id: 007-seed-core-config
+      author: neo-07
+      changes:
+        - insert:
+            tableName: core_config
+            columns:
+              - column:
+                  name: version
+                  valueNumeric: 1
+              - column:
+                  name: retry_budget
+                  valueNumeric: 3
+              - column:
+                  name: timeout_ms
+                  valueNumeric: 2000
+              - column:
+                  name: core_base_url
+                  value: http://localhost:8080
+              - column:
+                  name: catalogue
+                  value: >-
+                    {"CREDIT_CARD_STANDARD":{"apr":19.9,"limitMin":250,"limitMax":3000},
+                    "CREDIT_CARD_REWARDS":{"apr":24.9,"limitMin":500,"limitMax":10000},
+                    "CREDIT_CARD_STUDENT":{"apr":14.9,"limitMin":100,"limitMax":1500}}
+      rollback:
+        - delete:
+            tableName: core_config
+            where: version = 1
