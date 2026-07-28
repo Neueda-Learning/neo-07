@@ -148,4 +148,13 @@ class AccountSchemaRepositoryIT {
         // makes before saving.
         assertThat(accounts.findAll()).hasSize(1);
     }
+
+    // UC-02 AC#5's actual proof — two concurrent inserts of the same applicationId hitting the
+    // real PRIMARY KEY constraint — lives in AccountOpeningConcurrencyIT, which drives the real
+    // service path (accountRecords.save(new AccountRecord(...)) inside
+    // createAccountRecordIfAbsent). A same-applicationId round trip through this repository
+    // directly cannot be used to prove it: with a manually-assigned, non-generated @Id, Spring
+    // Data JPA's new-vs-existing detection falls back to merge (SELECT-then-write) rather than a
+    // blind INSERT, so a second saveAndFlush for the same id silently updates instead of
+    // violating the constraint — a JPA test-mechanics quirk, not a gap in the real guard.
 }

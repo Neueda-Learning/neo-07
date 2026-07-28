@@ -41,4 +41,8 @@ export const api = {
   searchAccounts: (q) => request(`/api/v1/accounts/search?q=${encodeURIComponent(q)}`),
   // Hydrates one row's applicant name, live — never cached server-side, so the UI caches it.
   getApplicant: (applicationId) => request(`/api/v1/accounts/${applicationId}/applicant`),
+  // UC-02 — Review Case + Attempt Log: one case's anchor record plus its ordered core calls.
+  getCase: (applicationId) => request(`/cases/${applicationId}`),
+  // UC-03 — View Applicant: the sidebar proxy, never persisted.
+  getCaseApplicant: (applicationId) => request(`/cases/${applicationId}/applicant`),
 };

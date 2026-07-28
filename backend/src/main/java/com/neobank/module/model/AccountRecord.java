@@ -108,6 +108,36 @@ public class AccountRecord {
         coreConfigVersion = configVersion;
     }
 
+    /** UC-02: the engine's decision that an account exists — created or adopted. */
+    public void open(String accountId, Integer creditAmount, boolean creditAmountFallback,
+            String agreementId, String productCode, Integer productVersion,
+            AccountReasonCode reasonCode, Instant openedAt) {
+        requireInProgress();
+        this.outcome = AccountOutcome.OPENED;
+        this.reasonCode = reasonCode;
+        this.accountId = accountId;
+        this.creditAmount = creditAmount;
+        this.creditAmountFallback = creditAmountFallback;
+        this.agreementId = agreementId;
+        this.productCode = productCode;
+        this.productVersion = productVersion;
+        this.openedAt = openedAt;
+    }
+
+    /** UC-02: the engine's decision that the core is unavailable after exhausting its retry budget. */
+    public void fail(AccountReasonCode reasonCode) {
+        requireInProgress();
+        this.outcome = AccountOutcome.FAILED;
+        this.reasonCode = reasonCode;
+    }
+
+    private void requireInProgress() {
+        if (outcome != AccountOutcome.IN_PROGRESS) {
+            throw new IllegalStateException(
+                    "account_record " + applicationId + " is already " + outcome + ", not IN_PROGRESS");
+        }
+    }
+
     public String getApplicationId() {
         return applicationId;
     }

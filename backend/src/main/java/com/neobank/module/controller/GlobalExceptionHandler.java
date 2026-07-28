@@ -1,5 +1,6 @@
 package com.neobank.module.controller;
 
+import com.neobank.module.model.CaseNotFoundException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -54,6 +55,12 @@ public class GlobalExceptionHandler {
         int newline = message == null ? -1 : message.indexOf('\n');
         return error(HttpStatus.BAD_REQUEST,
                 "malformed request body: " + (newline > 0 ? message.substring(0, newline) : message));
+    }
+
+    /** UC-02 AC#8 — an unknown applicationId under {@code /cases}, never a 500. */
+    @ExceptionHandler(CaseNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCaseNotFound(CaseNotFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {

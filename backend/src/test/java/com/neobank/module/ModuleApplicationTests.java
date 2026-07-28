@@ -106,12 +106,14 @@ class ModuleApplicationTests {
                 .andExpect(jsonPath("$.serviceId").value("neo07"))
                 .andExpect(jsonPath("$.command").value("process-application"));
 
-        // The row UC-00 writes. Filtered by id, not counted: H2 is shared across the tests in
-        // this context, so a size assertion would depend on execution order.
+        // The row UC-00 writes, then UC-02's engine decides synchronously (SameThreadExecutor)
+        // against the real mock core in this same context — by the time the POST above returned,
+        // the row has already left IN_PROGRESS. Filtered by id, not counted: H2 is shared across
+        // the tests in this context, so a size assertion would depend on execution order.
         mvc.perform(get("/api/v1/applications"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].outcome")
-                        .value(org.hamcrest.Matchers.hasItem("IN_PROGRESS")))
+                        .value(org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.not("IN_PROGRESS"))))
                 .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].reference")
                         .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.notNullValue())))
                 .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].createdAt")

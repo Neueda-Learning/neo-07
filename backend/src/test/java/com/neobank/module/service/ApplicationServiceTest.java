@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.neobank.module.integrations.orchestrator.Application;
@@ -17,27 +18,31 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /**
- * UC-00: the durable row, idempotency, and the failure guard.
+ * UC-00: the durable row, idempotency, and the failure guard. UC-02: the fresh-vs-replay hand-off
+ * into the engine and the concurrent-insert race guard.
  *
- * <p>No Spring, no database — the service takes a request and calls one collaborator, so the
+ * <p>No Spring, no database — the service takes a request and calls its collaborators, so the
  * test is a handful of lines.</p>
  */
 class ApplicationServiceTest {
 
     private AccountRecordRepository accountRecords;
     private ReferenceGenerator referenceGenerator;
+    private AccountOpeningService accountOpeningService;
     private ApplicationService service;
 
     @BeforeEach
     void setUp() {
         accountRecords = mock(AccountRecordRepository.class);
         referenceGenerator = mock(ReferenceGenerator.class);
+        accountOpeningService = mock(AccountOpeningService.class);
         when(referenceGenerator.next()).thenReturn("acc-00000001");
         when(accountRecords.save(any(AccountRecord.class))).thenAnswer(call -> call.getArgument(0));
         // Runnable::run — the work happens inline, so there is nothing to wait for.
-        service = new ApplicationService(Runnable::run, accountRecords, referenceGenerator);
+        service = new ApplicationService(Runnable::run, accountRecords, referenceGenerator, accountOpeningService);
     }
 
     private static ApplicationRequest request(String id) {
@@ -52,7 +57,7 @@ class ApplicationServiceTest {
     }
 
     @Test
-    void firstReceiptInsertsExactlyOneInProgressRow() {
+    void firstReceiptInsertsExactlyOneInProgressRowAndOpensTheEngine() {
         when(accountRecords.findById("SIM-01")).thenReturn(Optional.empty());
 
         service.processApplication(request("SIM-01"));
@@ -62,16 +67,37 @@ class ApplicationServiceTest {
         assertThat(saved.getValue().getApplicationId()).isEqualTo("SIM-01");
         assertThat(saved.getValue().getReference()).isEqualTo("acc-00000001");
         assertThat(saved.getValue().getOutcome()).isEqualTo(AccountOutcome.IN_PROGRESS);
+        verify(accountOpeningService).open(any(ApplicationRequest.class));
+        verify(accountOpeningService, never()).replay(any(AccountRecord.class));
     }
 
     @Test
-    void repeatedReceiptForTheSameIdDoesNotInsertASecondRow() {
+    void repeatedReceiptForTheSameIdDoesNotInsertASecondRowAndReplaysInstead() {
         AccountRecord existing = new AccountRecord("SIM-02", "acc-existing1");
         when(accountRecords.findById("SIM-02")).thenReturn(Optional.of(existing));
 
         service.processApplication(request("SIM-02"));
 
         verify(accountRecords, never()).save(any(AccountRecord.class));
+        verify(accountOpeningService).replay(existing);
+        verify(accountOpeningService, never()).open(any(ApplicationRequest.class));
+    }
+
+    @Test
+    void aConcurrentInsertRaceFallsBackToTheWinnersRowAndNeverInvokesTheEngineTwice() {
+        // This thread sees no row, but loses the actual insert race to another thread.
+        AccountRecord winnersRow = new AccountRecord("SIM-05", "acc-winner01");
+        when(accountRecords.findById("SIM-05"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(winnersRow));
+        doThrow(new DataIntegrityViolationException("duplicate key"))
+                .when(accountRecords).save(any(AccountRecord.class));
+
+        service.processApplication(request("SIM-05"));
+
+        // The loser never treats itself as fresh — it replays the winner's row instead.
+        verify(accountOpeningService).replay(winnersRow);
+        verify(accountOpeningService, never()).open(any(ApplicationRequest.class));
     }
 
     @Test
@@ -85,8 +111,7 @@ class ApplicationServiceTest {
 
     @Test
     void aPersistenceFailureIsLoggedNotThrown() {
-        // A module error here must not crash the executor's worker thread. There is nothing to
-        // report to the orchestrator yet — UC-00 never reaches a decision.
+        // A module error here must not crash the executor's worker thread.
         when(accountRecords.findById("SIM-04")).thenReturn(Optional.empty());
         doThrow(new IllegalStateException("database on fire"))
                 .when(accountRecords).save(any(AccountRecord.class));
@@ -94,6 +119,7 @@ class ApplicationServiceTest {
         service.processApplication(request("SIM-04"));
 
         // No exception propagates out of processApplication — reaching this line is the assertion.
+        verifyNoInteractions(accountOpeningService);
     }
 
     @Test
