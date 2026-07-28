@@ -9,16 +9,10 @@ import {
   SearchInput,
   Toolbar,
 } from '../design-system';
-import { outcomeTone } from '../status.js';
+import { money, outcomeTone } from '../status.js';
 import { api } from '../api.js';
 
 const DEBOUNCE_MS = 350;
-
-const money = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
-
-function formatMoney(amount) {
-  return amount == null ? '—' : money.format(amount);
-}
 
 function formatOpenedAt(iso) {
   return iso ? new Date(iso).toLocaleString() : '—';
@@ -122,7 +116,7 @@ export default function AccountBoardScreen() {
         return entry.fullName;
       },
     },
-    { key: 'creditAmount', header: 'Credit amount', numeric: true, render: (r) => formatMoney(r.creditAmount) },
+    { key: 'creditAmount', header: 'Credit amount', numeric: true, render: (r) => money(r.creditAmount) },
     { key: 'openedAt', header: 'Opened', render: (r) => formatOpenedAt(r.openedAt) },
   ];
 
