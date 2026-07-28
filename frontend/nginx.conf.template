@@ -37,6 +37,14 @@ server {
     proxy_pass http://$api_backend:8080$uri$is_args$args;
   }
 
+  # UC-02/UC-03's own endpoints live outside /api/ (GET /cases/{id}, GET /cases/{id}/applicant) —
+  # same reasoning as the block above: proxied by name, not a cached literal.
+  location ^~ ${BASE_PATH}/cases/ {
+    set $cases_backend ${BACKEND_HOST};
+    rewrite ^${BASE_PATH}(/cases/.*)$ $1 break;
+    proxy_pass http://$cases_backend:8080$uri$is_args$args;
+  }
+
   # Exact matches, so they also beat the regex below. The ALB target group health-checks
   # ${BASE_PATH}/health directly, bypassing its own routing rules — if this path and the
   # target group's HealthCheckPath ever disagree, every task is killed as unhealthy and
@@ -55,11 +63,6 @@ server {
   location = ${BASE_PATH}/queue {
     set $queue_backend ${BACKEND_HOST};
     proxy_pass http://$queue_backend:8080/queue;
-  }
-  location ^~ ${BASE_PATH}/cases/ {
-    set $cases_backend ${BACKEND_HOST};
-    rewrite ^${BASE_PATH}(/cases/.*)$ $1 break;
-    proxy_pass http://$cases_backend:8080$uri$is_args$args;
   }
 
   # UC-06 — Duplicate Report. Same reasoning as /queue and /cases/ above.

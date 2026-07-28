@@ -27,10 +27,10 @@ public class DuplicateReportService {
 
     private final CoreConfigRepository coreConfigs;
     private final AccountRecordRepository accountRecords;
-    private final CoreClient coreClient;
+    private final CoreOpsClient coreClient;
 
     public DuplicateReportService(CoreConfigRepository coreConfigs, AccountRecordRepository accountRecords,
-                                   CoreClient coreClient) {
+                                   CoreOpsClient coreClient) {
         this.coreConfigs = coreConfigs;
         this.accountRecords = accountRecords;
         this.coreClient = coreClient;

@@ -1,8 +1,13 @@
 package com.neobank.module.controller;
 
-import java.time.Instant;
-import java.util.LinkedHashMap;
+import com.neobank.module.model.CaseNotFoundException;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -56,9 +61,15 @@ public class GlobalExceptionHandler {
                 "malformed request body: " + (newline > 0 ? message.substring(0, newline) : message));
     }
 
-    /** UC-04 — an unknown case id, never a 500. */
+    /** UC-02 AC#8 — an unknown applicationId under {@code /cases}, never a 500. */
     @ExceptionHandler(CaseNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleCaseNotFound(CaseNotFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /** UC-04 — an unknown case id under {@code /cases/{id}/retry}, never a 500. */
+    @ExceptionHandler(RetryCaseNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleRetryCaseNotFound(RetryCaseNotFoundException ex) {
         return error(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
@@ -75,11 +86,6 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", Instant.now().toString());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status).body(ApiErrorBody.of(status, message));
     }
 }

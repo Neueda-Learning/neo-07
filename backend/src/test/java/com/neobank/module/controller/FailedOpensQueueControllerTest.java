@@ -50,7 +50,7 @@ class FailedOpensQueueControllerTest {
 
     @Test
     void retryOnAnUnknownCaseIs404() throws Exception {
-        doThrow(new CaseNotFoundException("ghost")).when(queue).retry("ghost");
+        doThrow(new RetryCaseNotFoundException("ghost")).when(queue).retry("ghost");
 
         mvc.perform(post("/cases/ghost/retry"))
                 .andExpect(status().isNotFound())

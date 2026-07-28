@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.neobank.module.controller.CaseNotFoundException;
+import com.neobank.module.controller.RetryCaseNotFoundException;
 import com.neobank.module.controller.InvalidCaseStateException;
 import com.neobank.module.dto.FailedQueueRow;
 import com.neobank.module.integrations.orchestrator.OrchestratorClient;
@@ -35,7 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 /**
- * UC-04 — Failed-Opens Queue service. No Spring, no database: {@link CoreClient} and the
+ * UC-04 — Failed-Opens Queue service. No Spring, no database: {@link CoreOpsClient} and the
  * repositories are mocked so every probe/open outcome the build notes describe can be pinned
  * exactly ("probe miss, open timeout, probe hit -> adopted" reads straight off the mock's
  * {@code when(...)} chain).
@@ -47,7 +47,7 @@ class FailedOpensQueueServiceTest {
     private AccountRecordRepository accountRecords;
     private CoreAttemptRepository coreAttempts;
     private CoreConfigRepository coreConfigs;
-    private CoreClient coreClient;
+    private CoreOpsClient coreClient;
     private OrchestratorClient orchestrator;
     private FailedOpensQueueService service;
 
@@ -56,7 +56,7 @@ class FailedOpensQueueServiceTest {
         accountRecords = mock(AccountRecordRepository.class);
         coreAttempts = mock(CoreAttemptRepository.class);
         coreConfigs = mock(CoreConfigRepository.class);
-        coreClient = mock(CoreClient.class);
+        coreClient = mock(CoreOpsClient.class);
         orchestrator = mock(OrchestratorClient.class);
         service = new FailedOpensQueueService(accountRecords, coreAttempts, coreConfigs, coreClient, orchestrator);
 
@@ -106,7 +106,7 @@ class FailedOpensQueueServiceTest {
     void retryOnAnUnknownIdIs404() {
         when(accountRecords.findById("ghost")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.retry("ghost")).isInstanceOf(CaseNotFoundException.class);
+        assertThatThrownBy(() -> service.retry("ghost")).isInstanceOf(RetryCaseNotFoundException.class);
     }
 
     @Test
@@ -130,9 +130,9 @@ class FailedOpensQueueServiceTest {
         when(accountRecords.findById("app-1234")).thenReturn(Optional.of(record));
         when(coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc("app-1234")).thenReturn(List.of());
         when(coreClient.probe("http://localhost:8080", "app-1234", 2000))
-                .thenReturn(new CoreClient.CoreCallOutcome(CoreAttemptResult.MISS, 10, null));
+                .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.MISS, 10, null));
         when(coreClient.open("http://localhost:8080", "app-1234", null, null, 2000))
-                .thenReturn(new CoreClient.CoreCallOutcome(CoreAttemptResult.CREATED, 20, "CC-0058291"));
+                .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.CREATED, 20, "CC-0058291"));
 
         service.retry("app-1234");
 
@@ -156,7 +156,7 @@ class FailedOpensQueueServiceTest {
         when(accountRecords.findById("app-adopt")).thenReturn(Optional.of(record));
         when(coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc("app-adopt")).thenReturn(List.of());
         when(coreClient.probe("http://localhost:8080", "app-adopt", 2000))
-                .thenReturn(new CoreClient.CoreCallOutcome(CoreAttemptResult.HIT, 15, "CC-EXISTING"));
+                .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.HIT, 15, "CC-EXISTING"));
 
         service.retry("app-adopt");
 
@@ -173,10 +173,10 @@ class FailedOpensQueueServiceTest {
         when(accountRecords.findById("app-timeout")).thenReturn(Optional.of(record));
         when(coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc("app-timeout")).thenReturn(List.of());
         when(coreClient.probe("http://localhost:8080", "app-timeout", 2000))
-                .thenReturn(new CoreClient.CoreCallOutcome(CoreAttemptResult.MISS, 10, null))
-                .thenReturn(new CoreClient.CoreCallOutcome(CoreAttemptResult.HIT, 12, "CC-RECOVERED"));
+                .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.MISS, 10, null))
+                .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.HIT, 12, "CC-RECOVERED"));
         when(coreClient.open("http://localhost:8080", "app-timeout", null, null, 2000))
-                .thenReturn(new CoreClient.CoreCallOutcome(CoreAttemptResult.TIMEOUT, 2000, null));
+                .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.TIMEOUT, 2000, null));
 
         service.retry("app-timeout");
 
@@ -206,9 +206,9 @@ class FailedOpensQueueServiceTest {
                 .thenReturn(List.of(priorProbe, priorOpen));
         when(coreConfigs.findById(CORE_CONFIG_VERSION)).thenReturn(Optional.of(config(3, 2000)));
         when(coreClient.probe("http://localhost:8080", "app-1240", 2000))
-                .thenReturn(new CoreClient.CoreCallOutcome(CoreAttemptResult.MISS, 5, null));
+                .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.MISS, 5, null));
         when(coreClient.open("http://localhost:8080", "app-1240", null, null, 2000))
-                .thenReturn(new CoreClient.CoreCallOutcome(CoreAttemptResult.ERROR, 5, null));
+                .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.ERROR, 5, null));
 
         service.retry("app-1240");
 

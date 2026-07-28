@@ -28,7 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * UC-06 end to end, over the real mock core: plants a duplicate straight into
  * {@link MockCoreStore} the way AC4 describes — bypassing this module's own write path entirely
- * — and proves the report's {@link com.neobank.module.service.CoreClient} call surfaces it.
+ * — and proves the report's {@link com.neobank.module.service.CoreOpsClient} call surfaces it.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc

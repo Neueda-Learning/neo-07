@@ -15,21 +15,24 @@ import org.springframework.web.client.RestClient;
 import java.util.List;
 
 /**
- * The calling half of the probe-then-open conversation with the core (UC-02's engine, reused by
- * UC-04's retry and UC-06's duplicate cross-check). {@link com.neobank.module.core.MockCoreController}
- * is the callee — a fake external system this module talks to over real HTTP, exactly the way it
- * would talk to the genuine core.
+ * The calling half of the probe-then-open conversation with the core, for this module's own
+ * operator-facing use cases: UC-04's manual retry and UC-06's duplicate cross-check. A sibling of
+ * {@link com.neobank.module.integrations.core.CoreClient}, which is UC-02's engine's own client —
+ * kept separate so the two Spring beans (and their independent {@code RestClient} lifecycles)
+ * never collide. {@link com.neobank.module.core.MockCoreController} is the callee — a fake
+ * external system this module talks to over real HTTP, exactly the way it would talk to the
+ * genuine core.
  *
  * <p>Every call is timed and never throws: a timeout, a connection failure and a 5xx are all
  * turned into a {@link CoreCallOutcome} the caller records as one {@code core_attempt} row. That
  * is the point — "the core did not answer" is evidence, not an exception to propagate.</p>
  */
 @Component
-public class CoreClient {
+public class CoreOpsClient {
 
     private final RestClient.Builder builder;
 
-    public CoreClient(RestClient.Builder builder) {
+    public CoreOpsClient(RestClient.Builder builder) {
         this.builder = builder;
     }
 

@@ -1,6 +1,6 @@
 package com.neobank.module.service;
 
-import com.neobank.module.controller.CaseNotFoundException;
+import com.neobank.module.controller.RetryCaseNotFoundException;
 import com.neobank.module.controller.InvalidCaseStateException;
 import com.neobank.module.dto.FailedQueueRow;
 import com.neobank.module.integrations.orchestrator.OrchestratorClient;
@@ -46,13 +46,13 @@ public class FailedOpensQueueService {
     private final AccountRecordRepository accountRecords;
     private final CoreAttemptRepository coreAttempts;
     private final CoreConfigRepository coreConfigs;
-    private final CoreClient coreClient;
+    private final CoreOpsClient coreClient;
     private final OrchestratorClient orchestrator;
 
     public FailedOpensQueueService(AccountRecordRepository accountRecords,
                                    CoreAttemptRepository coreAttempts,
                                    CoreConfigRepository coreConfigs,
-                                   CoreClient coreClient,
+                                   CoreOpsClient coreClient,
                                    OrchestratorClient orchestrator) {
         this.accountRecords = accountRecords;
         this.coreAttempts = coreAttempts;
@@ -82,12 +82,12 @@ public class FailedOpensQueueService {
      * the pinned config's retry budget allows — "the budget applies anew" (build notes): a case
      * that failed after its original 3 cycles gets a fresh 3, not zero.
      *
-     * @throws CaseNotFoundException   unknown applicationId (AC#6 — 404)
+     * @throws RetryCaseNotFoundException   unknown applicationId (AC#6 — 404)
      * @throws InvalidCaseStateException the case is not currently FAILED (AC#6 — 400)
      */
     public void retry(String applicationId) {
         AccountRecord record = accountRecords.findById(applicationId)
-                .orElseThrow(() -> new CaseNotFoundException(applicationId));
+                .orElseThrow(() -> new RetryCaseNotFoundException(applicationId));
         if (record.getOutcome() != AccountOutcome.FAILED) {
             throw new InvalidCaseStateException(
                     "case " + applicationId + " is not FAILED — nothing to retry");
@@ -117,7 +117,7 @@ public class FailedOpensQueueService {
     /** @return true once the case has flipped to OPENED (adopted or newly created). */
     private boolean runCycles(AccountRecord record, CoreConfig config, String applicationId, int startCycle) {
         for (int cycle = startCycle; cycle < startCycle + config.getRetryBudget(); cycle++) {
-            CoreClient.CoreCallOutcome probe =
+            CoreOpsClient.CoreCallOutcome probe =
                     coreClient.probe(config.getCoreBaseUrl(), applicationId, config.getTimeoutMs());
             saveAttempt(applicationId, cycle, CoreAttemptKind.PROBE, probe);
 
@@ -129,7 +129,7 @@ public class FailedOpensQueueService {
             // MISS, ERROR or TIMEOUT on the probe still attempts the open this cycle — a probe
             // failure does not prove the core is down for writes too, and the budget's job is to
             // spend whole cycles, not to guess which half of one failed.
-            CoreClient.CoreCallOutcome open = coreClient.open(config.getCoreBaseUrl(), applicationId,
+            CoreOpsClient.CoreCallOutcome open = coreClient.open(config.getCoreBaseUrl(), applicationId,
                     record.getProductCode(), record.getCreditAmount(), config.getTimeoutMs());
             saveAttempt(applicationId, cycle, CoreAttemptKind.OPEN, open);
 
@@ -140,7 +140,7 @@ public class FailedOpensQueueService {
             if (open.result() == CoreAttemptResult.TIMEOUT) {
                 // The outage may have hidden a created account — probe again before giving up on
                 // this cycle (UC-02 build notes: "on timeout probe again").
-                CoreClient.CoreCallOutcome recovery =
+                CoreOpsClient.CoreCallOutcome recovery =
                         coreClient.probe(config.getCoreBaseUrl(), applicationId, config.getTimeoutMs());
                 saveAttempt(applicationId, cycle, CoreAttemptKind.PROBE, recovery);
                 if (recovery.result() == CoreAttemptResult.HIT) {
@@ -154,7 +154,7 @@ public class FailedOpensQueueService {
     }
 
     private void saveAttempt(String applicationId, int cycle, CoreAttemptKind kind,
-                             CoreClient.CoreCallOutcome outcome) {
+                             CoreOpsClient.CoreCallOutcome outcome) {
         coreAttempts.save(new CoreAttempt(applicationId, cycle, kind, outcome.result(), applicationId,
                 outcome.latencyMs()));
     }

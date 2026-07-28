@@ -33,3 +33,9 @@ export const outcomeTone = toneMapper({
 export function time(iso) {
   return iso ? new Date(iso).toLocaleTimeString() : '—';
 }
+
+const MONEY = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+
+export function money(amount) {
+  return amount == null ? '—' : MONEY.format(amount);
+}

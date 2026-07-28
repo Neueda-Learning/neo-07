@@ -19,12 +19,12 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** UC-06 — the Duplicate Report's core-crossing logic, mocked at the CoreClient boundary. */
+/** UC-06 — the Duplicate Report's core-crossing logic, mocked at the CoreOpsClient boundary. */
 class DuplicateReportServiceTest {
 
     private CoreConfigRepository coreConfigs;
     private AccountRecordRepository accountRecords;
-    private CoreClient coreClient;
+    private CoreOpsClient coreClient;
     private DuplicateReportService service;
 
     private static CoreConfig config() {
@@ -39,7 +39,7 @@ class DuplicateReportServiceTest {
     void setUp() {
         coreConfigs = mock(CoreConfigRepository.class);
         accountRecords = mock(AccountRecordRepository.class);
-        coreClient = mock(CoreClient.class);
+        coreClient = mock(CoreOpsClient.class);
         service = new DuplicateReportService(coreConfigs, accountRecords, coreClient);
         when(coreConfigs.findTopByOrderByVersionDesc()).thenReturn(Optional.of(config()));
     }

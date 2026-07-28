@@ -6,12 +6,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.neobank.module.support.CoreConfigTestSupport;
 import java.util.concurrent.Executor;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -26,8 +30,12 @@ import org.springframework.test.web.servlet.MockMvc;
  * a {@code POST} returns the row has already been written and the whole receive → work loop is
  * observable without sleeping or polling. The real pool is exercised for real by
  * {@code docker compose up}.</p>
+ *
+ * <p>{@code webEnvironment = RANDOM_PORT}: UC-02's engine makes a real HTTP call to the mock
+ * core, so a real server must be listening — {@code MockMvc} alone drives the dispatcher
+ * in-process with no bound socket. See {@link CoreConfigTestSupport}.</p>
  */
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ModuleApplicationTests {
@@ -43,6 +51,17 @@ class ModuleApplicationTests {
         Executor applicationTaskExecutor() {
             return Runnable::run;
         }
+    }
+
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @BeforeEach
+    void pointCoreConfigAtThisPort() {
+        CoreConfigTestSupport.pointCoreBaseUrlAt(dataSource, port);
     }
 
     /** SIM-01 from the sidecar corpus, trimmed to what these assertions read. */
@@ -106,12 +125,14 @@ class ModuleApplicationTests {
                 .andExpect(jsonPath("$.serviceId").value("neo07"))
                 .andExpect(jsonPath("$.command").value("process-application"));
 
-        // The row UC-00 writes. Filtered by id, not counted: H2 is shared across the tests in
-        // this context, so a size assertion would depend on execution order.
+        // The row UC-00 writes, then UC-02's engine decides synchronously (SameThreadExecutor)
+        // against the real mock core in this same context — by the time the POST above returned,
+        // the row has already left IN_PROGRESS. Filtered by id, not counted: H2 is shared across
+        // the tests in this context, so a size assertion would depend on execution order.
         mvc.perform(get("/api/v1/applications"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].outcome")
-                        .value(org.hamcrest.Matchers.hasItem("IN_PROGRESS")))
+                        .value(org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.not("IN_PROGRESS"))))
                 .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].reference")
                         .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.notNullValue())))
                 .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].createdAt")

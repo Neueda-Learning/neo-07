@@ -27,9 +27,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * UC-04 end to end, over a real HTTP port: this module's own {@link com.neobank.module.service.CoreClient}
+ * UC-04 end to end, over a real HTTP port: this module's own {@link com.neobank.module.service.CoreOpsClient}
  * calling the real mock core, exactly the way it will over the wire in the running app. A real
- * {@code @SpringBootTest} on a random port rather than a slice — {@code CoreClient} makes genuine
+ * {@code @SpringBootTest} on a random port rather than a slice — {@code CoreOpsClient} makes genuine
  * socket calls, which a pure {@code MockMvc} test cannot exercise.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
