@@ -62,6 +62,13 @@ server {
     proxy_pass http://$cases_backend:8080$uri$is_args$args;
   }
 
+  # UC-06 — Duplicate Report. Same reasoning as /queue and /cases/ above.
+  location ^~ ${BASE_PATH}/reports/ {
+    set $reports_backend ${BACKEND_HOST};
+    rewrite ^${BASE_PATH}(/reports/.*)$ $1 break;
+    proxy_pass http://$reports_backend:8080$uri$is_args$args;
+  }
+
   # ---- the single-page app ----
   #
   # One regex covers all three shapes: "/neo-01" (no trailing slash, which is the URL

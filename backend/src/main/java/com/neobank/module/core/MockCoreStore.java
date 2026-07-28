@@ -41,6 +41,17 @@ public class MockCoreStore {
         return (accounts == null || accounts.isEmpty()) ? Optional.empty() : Optional.of(accounts.get(0));
     }
 
+    /**
+     * Every account the core has ever opened, across every reference (UC-06's cross-check).
+     * A reference with more than one entry here IS a duplicate — the mock is deliberately
+     * non-idempotent, so this list is the ground truth the module's own table is checked against.
+     */
+    public List<MockAccount> allAccounts() {
+        return accountsByReference.values().stream()
+                .flatMap(List::stream)
+                .toList();
+    }
+
     public MockCoreDials dials() {
         return dials.get();
     }

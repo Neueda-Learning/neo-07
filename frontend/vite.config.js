@@ -25,6 +25,8 @@ export default defineConfig({
       // UC-04 — Failed-Opens Queue: module-internal operator endpoints, unprefixed.
       '/queue': { target: BACKEND, changeOrigin: true },
       '/cases': { target: BACKEND, changeOrigin: true },
+      // UC-06 — Duplicate Report: same reasoning.
+      '/reports': { target: BACKEND, changeOrigin: true },
     },
   },
 });

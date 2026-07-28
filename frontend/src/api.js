@@ -45,4 +45,6 @@ export const api = {
   // operator re-running probe-then-open once the core is believed to be back, never the applicant.
   getFailedOpensQueue: () => request('/queue'),
   retryCase: (applicationId) => request(`/cases/${applicationId}/retry`, { method: 'POST' }),
+  // UC-06 — Duplicate Report. Read-only: a live cross-check, recomputed on every visit.
+  getDuplicateReport: () => request('/reports/duplicates'),
 };
