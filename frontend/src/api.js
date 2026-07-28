@@ -45,4 +45,10 @@ export const api = {
   getCase: (applicationId) => request(`/cases/${applicationId}`),
   // UC-03 — View Applicant: the sidebar proxy, never persisted.
   getCaseApplicant: (applicationId) => request(`/cases/${applicationId}/applicant`),
+  // UC-04 — Failed-Opens Queue. `retryCase` is this module's one write action from the UI: an
+  // operator re-running probe-then-open once the core is believed to be back, never the applicant.
+  getFailedOpensQueue: () => request('/queue'),
+  retryCase: (applicationId) => request(`/cases/${applicationId}/retry`, { method: 'POST' }),
+  // UC-06 — Duplicate Report. Read-only: a live cross-check, recomputed on every visit.
+  getDuplicateReport: () => request('/reports/duplicates'),
 };

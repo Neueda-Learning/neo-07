@@ -8,6 +8,12 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
  * Turns exceptions into a stable JSON error shape, so the front end and the orchestrator get a
@@ -59,6 +65,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CaseNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleCaseNotFound(CaseNotFoundException ex) {
         return error(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /** UC-04 — an unknown case id under {@code /cases/{id}/retry}, never a 500. */
+    @ExceptionHandler(RetryCaseNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleRetryCaseNotFound(RetryCaseNotFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /** UC-04 AC#6 — retrying a case that is not {@code FAILED}. */
+    @ExceptionHandler(InvalidCaseStateException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidCaseState(InvalidCaseStateException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /** UC-06 AC#5 — the core could not be reached; never a silently empty report. */
+    @ExceptionHandler(CoreUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleCoreUnavailable(CoreUnavailableException ex) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {

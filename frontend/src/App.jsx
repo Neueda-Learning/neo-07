@@ -3,6 +3,8 @@ import { AppShell, Button, SideBrand, SideNav, StatusPill } from './design-syste
 import RequestsScreen from './components/RequestsScreen.jsx';
 import AccountBoardScreen from './components/AccountBoardScreen.jsx';
 import CasesScreen from './components/CasesScreen.jsx';
+import FailedOpensQueueScreen from './components/FailedOpensQueueScreen.jsx';
+import DuplicateReportScreen from './components/DuplicateReportScreen.jsx';
 import { api } from './api.js';
 
 const POLL_MS = 2000;
@@ -20,8 +22,8 @@ const SCREENS = [
   { id: 'applications', label: 'Applications' },
   { id: 'accounts', label: 'Account Board' },
   { id: 'cases', label: 'Account Detail' },
-  { id: 'overrides', label: 'Overrides', hint: 'operator actions', disabled: true },
-  { id: 'settings', label: 'Settings', hint: 'reference data', disabled: true },
+  { id: 'failed-opens', label: 'Failed-Opens Queue' },
+  { id: 'duplicates', label: 'Duplicate Report' },
 ];
 
 /**
@@ -104,6 +106,8 @@ export default function App() {
       )}
       {screen === 'accounts' && <AccountBoardScreen />}
       {screen === 'cases' && <CasesScreen />}
+      {screen === 'failed-opens' && <FailedOpensQueueScreen />}
+      {screen === 'duplicates' && <DuplicateReportScreen />}
     </AppShell>
   );
 }

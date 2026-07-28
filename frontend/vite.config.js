@@ -22,6 +22,11 @@ export default defineConfig({
       '/api': { target: BACKEND, changeOrigin: true },
       '/health': { target: BACKEND, changeOrigin: true },
       '/info': { target: BACKEND, changeOrigin: true },
+      // UC-04 — Failed-Opens Queue: module-internal operator endpoints, unprefixed.
+      '/queue': { target: BACKEND, changeOrigin: true },
+      '/cases': { target: BACKEND, changeOrigin: true },
+      // UC-06 — Duplicate Report: same reasoning.
+      '/reports': { target: BACKEND, changeOrigin: true },
     },
   },
 });

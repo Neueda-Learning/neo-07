@@ -138,6 +138,24 @@ public class AccountRecord {
         }
     }
 
+    /**
+     * UC-04 — the retry engine's decision on an already-{@code FAILED} case: the core confirmed
+     * — created or adopted. Never touches {@code creditAmount}/{@code productCode}: the retry
+     * that calls this is a re-run of a case the engine above already gave up on, not an edit.
+     */
+    public void markOpened(String accountId, AccountReasonCode reasonCode) {
+        this.outcome = AccountOutcome.OPENED;
+        this.reasonCode = reasonCode;
+        this.accountId = accountId;
+        this.openedAt = Instant.now();
+    }
+
+    /** UC-04 — the retry budget was exhausted again — the core is still unreachable. */
+    public void markFailed(AccountReasonCode reasonCode) {
+        this.outcome = AccountOutcome.FAILED;
+        this.reasonCode = reasonCode;
+    }
+
     public String getApplicationId() {
         return applicationId;
     }
