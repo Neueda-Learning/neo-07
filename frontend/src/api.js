@@ -28,9 +28,11 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-// This UI only ever READS. Applications arrive from the orchestrator — the real one, or the
-// sidecar playing it at http://localhost:9000 — never from a button in here. That is the
-// contract: your module is called, it does not call itself.
+// Applications arrive from the orchestrator — the real one, or the sidecar playing it at
+// http://localhost:9000 — never from a button in here. That is the contract: your module is
+// called, it does not call itself. The two exceptions are operator actions on THIS module's own
+// state: retrying a parked case (UC-04) and operating the mock core's dials/config (UC-05, UC-08)
+// — neither one re-submits or mutates an application.
 export const api = {
   health: () => request('/health'),
   info: () => request('/info'),
@@ -51,4 +53,11 @@ export const api = {
   retryCase: (applicationId) => request(`/cases/${applicationId}/retry`, { method: 'POST' }),
   // UC-06 — Duplicate Report. Read-only: a live cross-check, recomputed on every visit.
   getDuplicateReport: () => request('/reports/duplicates'),
+  // UC-05 — Operate Mock Core Control Panel. The mock's own live dials, in-memory on that
+  // service — PUT is a partial update, only the fields present in the body change.
+  getDials: () => request('/core/admin/dials'),
+  updateDials: (patch) => request('/core/admin/dials', { method: 'PUT', body: JSON.stringify(patch) }),
+  // UC-08 — Edit Core Config. Insert-only: POST always adds a new version, never edits one.
+  createConfig: (payload) => request('/config', { method: 'POST', body: JSON.stringify(payload) }),
+  getConfigVersions: () => request('/config/versions'),
 };

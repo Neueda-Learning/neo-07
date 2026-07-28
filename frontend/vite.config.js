@@ -27,6 +27,10 @@ export default defineConfig({
       '/cases': { target: BACKEND, changeOrigin: true },
       // UC-06 — Duplicate Report: same reasoning.
       '/reports': { target: BACKEND, changeOrigin: true },
+      // UC-05 — Operate Mock Core Control Panel: the mock core's own admin route.
+      '/core': { target: BACKEND, changeOrigin: true },
+      // UC-08 — Edit Core Config: versioned retry/timeout/catalogue policy.
+      '/config': { target: BACKEND, changeOrigin: true },
     },
   },
 });
