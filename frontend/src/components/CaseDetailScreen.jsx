@@ -10,14 +10,8 @@ import {
   Split,
   Timeline,
 } from '../design-system';
-import { outcomeTone } from '../status.js';
+import { money, outcomeTone } from '../status.js';
 import { api } from '../api.js';
-
-const money = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
-
-function formatMoney(amount) {
-  return amount == null ? '—' : money.format(amount);
-}
 
 function attemptTitle(attempt) {
   return `${attempt.kind} ${attempt.result}`;
@@ -79,7 +73,7 @@ export default function CaseDetailScreen({ applicationId }) {
           { label: 'Full name', value: applicant.fullName ?? '—' },
           { label: 'Date of birth', value: applicant.dateOfBirth ?? '—', mono: true },
           { label: 'Product requested', value: applicant.productCode ?? '—', mono: true },
-          { label: 'Requested limit', value: formatMoney(applicant.requestedCreditLimit) },
+          { label: 'Requested limit', value: money(applicant.requestedCreditLimit) },
           { label: 'Channel', value: applicant.channel ?? '—' },
         ]}
       />
@@ -130,7 +124,7 @@ export default function CaseDetailScreen({ applicationId }) {
           <KeyValue
             items={[
               { label: 'Account id', value: caseDetail.accountId ?? '—', mono: true },
-              { label: 'Credit amount', value: formatMoney(caseDetail.creditAmount) },
+              { label: 'Credit amount', value: money(caseDetail.creditAmount) },
               { label: 'Agreement id', value: caseDetail.agreementId ?? '—', mono: true },
               { label: 'Customer id', value: caseDetail.customerId ?? '—', mono: true },
               { label: 'Card id', value: caseDetail.cardId ?? '—', mono: true },

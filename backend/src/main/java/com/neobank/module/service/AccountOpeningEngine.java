@@ -94,16 +94,10 @@ public final class AccountOpeningEngine {
             CoreCaller probe,
             CoreCaller open) {
 
-        Integer creditAmount;
-        boolean creditAmountFallback;
-        if (creditTerms.approvedLimit() != null) {
-            creditAmount = creditTerms.approvedLimit();
-            creditAmountFallback = false;
-        } else {
-            creditAmount = requestedCreditLimit;
-            creditAmountFallback = true;
-        }
-        String agreementId = creditTerms.approvedLimit() != null ? creditTerms.agreementId() : null;
+        boolean hasApprovedLimit = creditTerms.approvedLimit() != null;
+        Integer creditAmount = hasApprovedLimit ? creditTerms.approvedLimit() : requestedCreditLimit;
+        boolean creditAmountFallback = !hasApprovedLimit;
+        String agreementId = hasApprovedLimit ? creditTerms.agreementId() : null;
 
         for (int cycle = 1; cycle <= retryBudget; cycle++) {
             CoreCallOutcome probeOutcome = probe.call(applicationId, cycle);

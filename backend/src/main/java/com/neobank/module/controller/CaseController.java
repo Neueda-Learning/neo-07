@@ -3,9 +3,6 @@ package com.neobank.module.controller;
 import com.neobank.module.dto.ApplicantView;
 import com.neobank.module.dto.CaseDetailView;
 import com.neobank.module.service.CaseService;
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,17 +38,8 @@ public class CaseController {
     public ResponseEntity<Object> getApplicant(@PathVariable String applicationId) {
         return cases.getApplicant(applicationId)
                 .<ResponseEntity<Object>>map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorBody(
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ApiErrorBody.of(
                         HttpStatus.BAD_GATEWAY,
                         "applicant lookup unavailable — the orchestrator did not answer")));
-    }
-
-    private Map<String, Object> errorBody(HttpStatus status, String message) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", Instant.now().toString());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
-        return body;
     }
 }

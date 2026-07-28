@@ -7,11 +7,15 @@ import com.neobank.module.integrations.orchestrator.ApplicationRequest;
 import com.neobank.module.model.AccountOutcome;
 import com.neobank.module.repository.AccountRecordRepository;
 import com.neobank.module.repository.CoreAttemptRepository;
+import com.neobank.module.support.CoreConfigTestSupport;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MySQLContainer;
@@ -23,8 +27,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * constraint on {@code application_id}, not a Java-level lock, is what resolves the race: two
  * threads racing {@link ApplicationService#processApplication} for the same id must produce
  * exactly one {@code account_record} row and run the engine exactly once.
+ *
+ * <p>{@code webEnvironment = RANDOM_PORT}: the engine makes a real HTTP call to the mock core, so
+ * a real server must be bound. See {@link CoreConfigTestSupport}.</p>
  */
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 class AccountOpeningConcurrencyIT {
 
@@ -39,6 +46,12 @@ class AccountOpeningConcurrencyIT {
         registry.add("spring.datasource.password", mysql::getPassword);
     }
 
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    private DataSource dataSource;
+
     @Autowired
     private ApplicationService applicationService;
 
@@ -47,6 +60,11 @@ class AccountOpeningConcurrencyIT {
 
     @Autowired
     private CoreAttemptRepository coreAttempts;
+
+    @BeforeEach
+    void pointCoreConfigAtThisPort() {
+        CoreConfigTestSupport.pointCoreBaseUrlAt(dataSource, port);
+    }
 
     private static ApplicationRequest request(String id) {
         Application application = new Application(

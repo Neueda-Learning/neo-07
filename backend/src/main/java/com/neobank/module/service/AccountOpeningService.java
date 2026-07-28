@@ -87,7 +87,7 @@ public class AccountOpeningService {
             String comment = result.outcome() == AccountOutcome.OPENED
                     ? "account opened: " + describeReason(result)
                     : "core unreachable after " + config.getRetryBudget() + " cycles";
-            orchestratorClient.applicationStatusUpdate(applicationId, toDecision(result.outcome()), comment);
+            report(applicationId, result.outcome(), comment);
         } catch (RuntimeException e) {
             // A bug in the engine or its I/O must not crash the worker thread — the row is
             // already committed IN_PROGRESS; there is nothing left to roll back.
@@ -114,8 +114,15 @@ public class AccountOpeningService {
         String comment = existing.getOutcome() == AccountOutcome.OPENED
                 ? "account opened: replayed stored outcome"
                 : "core unreachable (replayed stored outcome)";
-        orchestratorClient.applicationStatusUpdate(existing.getApplicationId(), toDecision(existing.getOutcome()),
-                comment);
+        report(existing.getApplicationId(), existing.getOutcome(), comment);
+    }
+
+    /** The one place an {@link AccountOutcome} becomes a callback {@link Decision} — used by both
+     * a fresh decision ({@link #open}) and a replay ({@link #replay}), so the mapping never drifts
+     * between the two call sites. */
+    private void report(String applicationId, AccountOutcome outcome, String comment) {
+        Decision decision = outcome == AccountOutcome.OPENED ? Decision.ACCEPTED : Decision.REFERRED;
+        orchestratorClient.applicationStatusUpdate(applicationId, decision, comment);
     }
 
     private CoreCallOutcome probe(CoreConfig config, String applicationId, int cycle) {
@@ -163,9 +170,5 @@ public class AccountOpeningService {
             case ACC_DUPLICATE_PREVENTED -> "adopted an existing core account after a timeout";
             case ACC_CORE_UNAVAILABLE -> "core unreachable";
         };
-    }
-
-    private static Decision toDecision(AccountOutcome outcome) {
-        return outcome == AccountOutcome.OPENED ? Decision.ACCEPTED : Decision.REFERRED;
     }
 }

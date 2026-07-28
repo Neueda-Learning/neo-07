@@ -3,6 +3,8 @@ package com.neobank.module.integrations.core;
 import com.neobank.module.model.CoreAttemptResult;
 import java.net.SocketTimeoutException;
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
@@ -17,19 +19,21 @@ import org.springframework.web.client.RestClientException;
  * {@code integrations/orchestrator}, per AGENTS.md's prescribed shape ("your own integrations go
  * beside it, not in it").
  *
- * <p>Every call is built fresh against the caller-supplied {@code coreBaseUrl}/{@code timeoutMs}
- * from the pinned {@code CoreConfig} — the shared {@code RestClient} bean in {@code AppConfig}
- * belongs to {@code OrchestratorClient}, which has its own timeout profile, and is left
- * untouched.</p>
+ * <p>Built against the caller-supplied {@code coreBaseUrl}/{@code timeoutMs} from the pinned
+ * {@code CoreConfig}, cached per pair since a case pins one config for its whole engine run — the
+ * shared {@code RestClient} bean in {@code AppConfig} belongs to {@code OrchestratorClient}, which
+ * has its own timeout profile, and is left untouched.</p>
  */
 @Component
 public class CoreClient {
 
     private static final Logger log = LoggerFactory.getLogger(CoreClient.class);
 
+    private final Map<String, RestClient> clients = new ConcurrentHashMap<>();
+
     /** {@code GET /core/card-accounts?reference=}: 200 -> HIT, 404 -> MISS, anything else -> ERROR/TIMEOUT. */
     public CoreCallResult probe(String coreBaseUrl, int timeoutMs, String reference) {
-        RestClient http = build(coreBaseUrl, timeoutMs);
+        RestClient http = client(coreBaseUrl, timeoutMs);
         long start = System.nanoTime();
         try {
             CoreAccountResponse body = http.get()
@@ -55,7 +59,7 @@ public class CoreClient {
     /** {@code POST /core/card-accounts}: 201 -> CREATED, timeout -> TIMEOUT, anything else -> ERROR. */
     public CoreCallResult open(String coreBaseUrl, int timeoutMs, String reference, String productCode,
             Integer creditAmount) {
-        RestClient http = build(coreBaseUrl, timeoutMs);
+        RestClient http = client(coreBaseUrl, timeoutMs);
         long start = System.nanoTime();
         try {
             CoreAccountResponse body = http.post()
@@ -91,14 +95,16 @@ public class CoreClient {
         return false;
     }
 
-    private RestClient build(String coreBaseUrl, int timeoutMs) {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofMillis(timeoutMs));
-        factory.setReadTimeout(Duration.ofMillis(timeoutMs));
-        return RestClient.builder()
-                .baseUrl(coreBaseUrl)
-                .requestFactory(factory)
-                .build();
+    private RestClient client(String coreBaseUrl, int timeoutMs) {
+        return clients.computeIfAbsent(coreBaseUrl + "|" + timeoutMs, key -> {
+            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(Duration.ofMillis(timeoutMs));
+            factory.setReadTimeout(Duration.ofMillis(timeoutMs));
+            return RestClient.builder()
+                    .baseUrl(coreBaseUrl)
+                    .requestFactory(factory)
+                    .build();
+        });
     }
 
     private static long elapsedMs(long startNanos) {
