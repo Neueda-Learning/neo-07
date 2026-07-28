@@ -1,0 +1,17 @@
+# TEXT is reported as LONGVARCHAR by MySQL and CLOB by H2, which makes ddl-auto=validate
+# dialect-dependent. The use-case requires a mandatory operator justification, and 1000
+# characters is ample while remaining a portable VARCHAR in both supported databases.
+databaseChangeLog:
+  - changeSet:
+      id: 004-normalize-override-reason
+      author: neo-07
+      changes:
+        - modifyDataType:
+            tableName: override_log
+            columnName: reason
+            newDataType: VARCHAR(1000)
+      rollback:
+        - modifyDataType:
+            tableName: override_log
+            columnName: reason
+            newDataType: TEXT

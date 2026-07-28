@@ -40,10 +40,10 @@ DB_PASSWORD="${DB_PASSWORD:-apppass}"
 # The tables to empty, children first — that ordering is the habit that survives someone
 # adding a foreign key later.
 #
-# ⚠️ KEEP THIS IN STEP WITH YOUR SCHEMA. When you replace demo_showcase with your own tables
-# (see model/DemoShowcase.java), list them here. A name left behind here fails the truncate with
-# "table doesn't exist", which is a confusing way to find out your cleanup script went stale.
-TABLES="demo_showcase"
+# Keep children before their parents. demo_showcase remains until the placeholder service and UI
+# have been replaced; core_config stays in the reset so the eventual v1 seed is restored only by a
+# hard reset/Liquibase, rather than surviving as misleading state after a clean-board reset.
+TABLES="core_attempt override_log account_record core_config demo_showcase"
 
 die() { echo "error: $*" >&2; exit 1; }
 

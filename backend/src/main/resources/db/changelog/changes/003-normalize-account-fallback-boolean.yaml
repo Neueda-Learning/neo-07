@@ -1,0 +1,16 @@
+# Liquibase maps BOOLEAN to TINYINT on MySQL while Hibernate's MySQL boolean mapping validates
+# against BIT. Keep 002 immutable and normalize the physical type in an append-only fix.
+databaseChangeLog:
+  - changeSet:
+      id: 003-normalize-account-fallback-boolean
+      author: neo-07
+      changes:
+        - modifyDataType:
+            tableName: account_record
+            columnName: credit_amount_fallback
+            newDataType: BIT(1)
+      rollback:
+        - modifyDataType:
+            tableName: account_record
+            columnName: credit_amount_fallback
+            newDataType: BOOLEAN
