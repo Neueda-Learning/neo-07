@@ -23,13 +23,9 @@ import org.springframework.test.web.servlet.MockMvc;
  * {@code mvn test}.
  *
  * <p>The work runs on the <em>test</em> thread here (see {@link SameThreadExecutor}), so by the time
- * a {@code POST} returns the row has already been written and the whole receive → work → report loop
- * is observable without sleeping or polling. The real pool is exercised for real by
+ * a {@code POST} returns the row has already been written and the whole receive → work loop is
+ * observable without sleeping or polling. The real pool is exercised for real by
  * {@code docker compose up}.</p>
- *
- * <p>The status update goes to {@code http://localhost:9} — a dead port, set in
- * {@code application-test.yml} — so nothing escapes the JVM and the client's swallow-and-log
- * behaviour is exercised on every test.</p>
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -110,12 +106,14 @@ class ModuleApplicationTests {
                 .andExpect(jsonPath("$.serviceId").value("neo07"))
                 .andExpect(jsonPath("$.command").value("process-application"));
 
-        // The row the placeholder writes. Filtered by id, not counted: H2 is shared across the
-        // tests in this context, so a size assertion would depend on execution order.
+        // The row UC-00 writes. Filtered by id, not counted: H2 is shared across the tests in
+        // this context, so a size assertion would depend on execution order.
         mvc.perform(get("/api/v1/applications"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].status")
-                        .value(org.hamcrest.Matchers.hasItem("ACCEPTED")))
+                .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].outcome")
+                        .value(org.hamcrest.Matchers.hasItem("IN_PROGRESS")))
+                .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].reference")
+                        .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.notNullValue())))
                 .andExpect(jsonPath("$[?(@.applicationId == 'IT-ONE')].createdAt")
                         .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.notNullValue())));
     }
