@@ -72,6 +72,21 @@ server {
     proxy_pass http://$reports_backend:8080$uri$is_args$args;
   }
 
+  # UC-05 — Operate Mock Core Control Panel. The mock core's own admin route
+  # (GET/PUT /core/admin/dials), unprefixed like /queue and /reports/ above.
+  location ^~ ${BASE_PATH}/core/ {
+    set $core_backend ${BACKEND_HOST};
+    rewrite ^${BASE_PATH}(/core/.*)$ $1 break;
+    proxy_pass http://$core_backend:8080$uri$is_args$args;
+  }
+
+  # UC-08 — Edit Core Config. Covers both POST /config and GET /config/versions.
+  location ^~ ${BASE_PATH}/config {
+    set $config_backend ${BACKEND_HOST};
+    rewrite ^${BASE_PATH}(/config.*)$ $1 break;
+    proxy_pass http://$config_backend:8080$uri$is_args$args;
+  }
+
   # ---- the single-page app ----
   #
   # One regex covers all three shapes: "/neo-01" (no trailing slash, which is the URL

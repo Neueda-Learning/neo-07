@@ -5,6 +5,8 @@ import AccountBoardScreen from './components/AccountBoardScreen.jsx';
 import CasesScreen from './components/CasesScreen.jsx';
 import FailedOpensQueueScreen from './components/FailedOpensQueueScreen.jsx';
 import DuplicateReportScreen from './components/DuplicateReportScreen.jsx';
+import CoreControlPanelScreen from './components/CoreControlPanelScreen.jsx';
+import CoreConfigScreen from './components/CoreConfigScreen.jsx';
 import { api } from './api.js';
 
 const POLL_MS = 2000;
@@ -24,6 +26,8 @@ const SCREENS = [
   { id: 'cases', label: 'Account Detail' },
   { id: 'failed-opens', label: 'Failed-Opens Queue' },
   { id: 'duplicates', label: 'Duplicate Report' },
+  { id: 'core-panel', label: 'Core Control Panel' },
+  { id: 'core-config', label: 'Core Configuration' },
 ];
 
 /**
@@ -108,6 +112,8 @@ export default function App() {
       {screen === 'cases' && <CasesScreen />}
       {screen === 'failed-opens' && <FailedOpensQueueScreen />}
       {screen === 'duplicates' && <DuplicateReportScreen />}
+      {screen === 'core-panel' && <CoreControlPanelScreen />}
+      {screen === 'core-config' && <CoreConfigScreen />}
     </AppShell>
   );
 }
