@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-restore-domain-nullability
+      author: neo-07
+      comment: Restore constraints that MySQL drops when MODIFY COLUMN changes only the data type.
+      changes:
+        - addDefaultValue:
+            tableName: account_record
+            columnName: credit_amount_fallback
+            columnDataType: BIT(1)
+            defaultValueBoolean: false
+        - addNotNullConstraint:
+            tableName: account_record
+            columnName: credit_amount_fallback
+            columnDataType: BIT(1)
+            defaultNullValue: false
+        - addNotNullConstraint:
+            tableName: override_log
+            columnName: reason
+            columnDataType: VARCHAR(1000)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: override_log
+            columnName: reason
+            columnDataType: VARCHAR(1000)
+        - dropNotNullConstraint:
+            tableName: account_record
+            columnName: credit_amount_fallback
+            columnDataType: BIT(1)
+        - dropDefaultValue:
+            tableName: account_record
+            columnName: credit_amount_fallback

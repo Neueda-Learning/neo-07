@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-enforce-mysql-fallback-definition
+      author: neo-07
+      dbms: mysql
+      comment: Define the complete MySQL column in one statement so later ALTER operations cannot drop its default.
+      changes:
+        - sql:
+            sql: ALTER TABLE account_record MODIFY COLUMN credit_amount_fallback BIT(1) NOT NULL DEFAULT b'0'
+      rollback:
+        - sql:
+            sql: ALTER TABLE account_record MODIFY COLUMN credit_amount_fallback BIT(1) NOT NULL
