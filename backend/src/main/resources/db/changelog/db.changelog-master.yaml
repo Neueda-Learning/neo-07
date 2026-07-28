@@ -4,3 +4,13 @@
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-create-demo-showcase.yaml
+  - include:
+      file: db/changelog/changes/002-create-account-domain.yaml
+  - include:
+      file: db/changelog/changes/003-normalize-account-fallback-boolean.yaml
+  - include:
+      file: db/changelog/changes/004-normalize-override-reason.yaml
+  - include:
+      file: db/changelog/changes/005-restore-domain-nullability.yaml
+  - include:
+      file: db/changelog/changes/006-enforce-mysql-fallback-definition.yaml
