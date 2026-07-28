@@ -2,43 +2,42 @@ package com.neobank.module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.neobank.module.integrations.orchestrator.Application;
 import com.neobank.module.integrations.orchestrator.ApplicationRequest;
-import com.neobank.module.integrations.orchestrator.OrchestratorClient;
-import com.neobank.module.model.Decision;
-import com.neobank.module.model.DemoShowcase;
-import com.neobank.module.repository.DemoShowcaseRepository;
+import com.neobank.module.model.AccountOutcome;
+import com.neobank.module.model.AccountRecord;
+import com.neobank.module.repository.AccountRecordRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 /**
- * The three things the placeholder does, and the guard that keeps a failure reportable.
+ * UC-00: the durable row, idempotency, and the failure guard.
  *
- * <p>No Spring, no database, no HTTP — the service takes a request and calls two collaborators, so
- * the test is a handful of lines. Keep it that way as you replace the body: logic that needs a
- * running container to test is logic you will stop testing.</p>
+ * <p>No Spring, no database — the service takes a request and calls one collaborator, so the
+ * test is a handful of lines.</p>
  */
 class ApplicationServiceTest {
 
-    private DemoShowcaseRepository demoShowcase;
-    private OrchestratorClient orchestrator;
+    private AccountRecordRepository accountRecords;
+    private ReferenceGenerator referenceGenerator;
     private ApplicationService service;
 
     @BeforeEach
     void setUp() {
-        demoShowcase = mock(DemoShowcaseRepository.class);
-        orchestrator = mock(OrchestratorClient.class);
+        accountRecords = mock(AccountRecordRepository.class);
+        referenceGenerator = mock(ReferenceGenerator.class);
+        when(referenceGenerator.next()).thenReturn("acc-00000001");
+        when(accountRecords.save(any(AccountRecord.class))).thenAnswer(call -> call.getArgument(0));
         // Runnable::run — the work happens inline, so there is nothing to wait for.
-        service = new ApplicationService(Runnable::run, demoShowcase, orchestrator);
-        when(demoShowcase.save(any(DemoShowcase.class))).thenAnswer(call -> call.getArgument(0));
+        service = new ApplicationService(Runnable::run, accountRecords, referenceGenerator);
     }
 
     private static ApplicationRequest request(String id) {
@@ -53,53 +52,61 @@ class ApplicationServiceTest {
     }
 
     @Test
-    void storesTheApplicationAndReportsItAccepted() {
+    void firstReceiptInsertsExactlyOneInProgressRow() {
+        when(accountRecords.findById("SIM-01")).thenReturn(Optional.empty());
+
         service.processApplication(request("SIM-01"));
 
-        ArgumentCaptor<DemoShowcase> saved = ArgumentCaptor.forClass(DemoShowcase.class);
-        verify(demoShowcase).save(saved.capture());
+        ArgumentCaptor<AccountRecord> saved = ArgumentCaptor.forClass(AccountRecord.class);
+        verify(accountRecords).save(saved.capture());
         assertThat(saved.getValue().getApplicationId()).isEqualTo("SIM-01");
-        assertThat(saved.getValue().getStatus()).isEqualTo("ACCEPTED");
+        assertThat(saved.getValue().getReference()).isEqualTo("acc-00000001");
+        assertThat(saved.getValue().getOutcome()).isEqualTo(AccountOutcome.IN_PROGRESS);
+    }
 
-        verify(orchestrator).applicationStatusUpdate("SIM-01", Decision.ACCEPTED,
-                "hello world from processApplication");
+    @Test
+    void repeatedReceiptForTheSameIdDoesNotInsertASecondRow() {
+        AccountRecord existing = new AccountRecord("SIM-02", "acc-existing1");
+        when(accountRecords.findById("SIM-02")).thenReturn(Optional.of(existing));
+
+        service.processApplication(request("SIM-02"));
+
+        verify(accountRecords, never()).save(any(AccountRecord.class));
     }
 
     @Test
     void theAsyncEntryPointDoesTheSameWorkThroughTheExecutor() {
-        service.processApplicationAsync(request("SIM-02"));
+        when(accountRecords.findById("SIM-03")).thenReturn(Optional.empty());
 
-        verify(demoShowcase).save(any(DemoShowcase.class));
-        verify(orchestrator).applicationStatusUpdate(eq("SIM-02"), eq(Decision.ACCEPTED), any());
+        service.processApplicationAsync(request("SIM-03"));
+
+        verify(accountRecords).save(any(AccountRecord.class));
     }
 
     @Test
-    void aFailureIsStillReportedRatherThanLeavingTheJourneyToTimeOut() {
-        // The failure mode this guard exists for: a module that throws never reports, and the
-        // orchestrator then waits out its 30s timeout and ends the journey FAILED with nothing to
-        // explain it. REFERRED with a reason is far more useful than silence.
+    void aPersistenceFailureIsLoggedNotThrown() {
+        // A module error here must not crash the executor's worker thread. There is nothing to
+        // report to the orchestrator yet — UC-00 never reaches a decision.
+        when(accountRecords.findById("SIM-04")).thenReturn(Optional.empty());
         doThrow(new IllegalStateException("database on fire"))
-                .when(demoShowcase).save(any(DemoShowcase.class));
+                .when(accountRecords).save(any(AccountRecord.class));
 
-        service.processApplication(request("SIM-03"));
+        service.processApplication(request("SIM-04"));
 
-        ArgumentCaptor<String> comment = ArgumentCaptor.forClass(String.class);
-        verify(orchestrator).applicationStatusUpdate(eq("SIM-03"), eq(Decision.REFERRED),
-                comment.capture());
-        assertThat(comment.getValue()).contains("database on fire");
-        verifyNoMoreInteractions(orchestrator);
+        // No exception propagates out of processApplication — reaching this line is the assertion.
     }
 
     @Test
     void theBoardShowsWhatWasStored() {
-        when(demoShowcase.findAllByOrderByCreatedAtDescIdDesc())
-                .thenReturn(java.util.List.of(new DemoShowcase("SIM-01", Decision.ACCEPTED)));
+        AccountRecord row = new AccountRecord("SIM-01", "acc-00000001");
+        when(accountRecords.findAllByOrderByCreatedAtDesc()).thenReturn(java.util.List.of(row));
 
         assertThat(service.findAll())
                 .singleElement()
                 .satisfies(view -> {
                     assertThat(view.applicationId()).isEqualTo("SIM-01");
-                    assertThat(view.status()).isEqualTo("ACCEPTED");
+                    assertThat(view.reference()).isEqualTo("acc-00000001");
+                    assertThat(view.outcome()).isEqualTo(AccountOutcome.IN_PROGRESS);
                 });
     }
 }

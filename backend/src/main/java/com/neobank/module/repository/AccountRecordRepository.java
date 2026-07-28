@@ -12,6 +12,8 @@ public interface AccountRecordRepository extends JpaRepository<AccountRecord, St
 
     Optional<AccountRecord> findByReference(String reference);
 
+    List<AccountRecord> findAllByOrderByCreatedAtDesc();
+
     List<AccountRecord> findTop10ByApplicationIdContainingIgnoreCaseOrderByCreatedAtDesc(
             String applicationId);
 

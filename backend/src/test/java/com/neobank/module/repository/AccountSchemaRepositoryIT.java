@@ -112,4 +112,25 @@ class AccountSchemaRepositoryIT {
                     assertThat(entry.getOperator()).isEqualTo("operator-1");
                 });
     }
+
+    @Test
+    void referenceIsUniqueAcrossApplicationIds() {
+        accounts.saveAndFlush(new AccountRecord("APP-2", "acc-shared01"));
+
+        AccountRecord duplicate = new AccountRecord("APP-3", "acc-shared01");
+        org.junit.jupiter.api.Assertions.assertThrows(
+                org.springframework.dao.DataIntegrityViolationException.class,
+                () -> accounts.saveAndFlush(duplicate));
+    }
+
+    @Test
+    void findByIdIsTheIdempotencyCheckUc00ReliesOn() {
+        accounts.saveAndFlush(new AccountRecord("APP-4", "acc-idem0001"));
+
+        assertThat(accounts.findById("APP-4")).isPresent();
+        // A second /execute for the same id must see the existing row rather than needing a
+        // second insert — this is the exact check ApplicationService.createAccountRecordIfAbsent
+        // makes before saving.
+        assertThat(accounts.findAll()).hasSize(1);
+    }
 }
