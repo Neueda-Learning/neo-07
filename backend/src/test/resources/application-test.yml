@@ -25,3 +25,8 @@ service:
   domain: account
   orchestrator-url: http://localhost:9
   mocked-dependencies: id-verification-provider, sanctions-list
+
+# Short enough that a test can prove the timeout trap commits before it goes quiet without
+# waiting out the real 2-minute production default.
+mock-core:
+  timeout-trap-silence-ms: 300
