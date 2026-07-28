@@ -56,6 +56,24 @@ public class GlobalExceptionHandler {
                 "malformed request body: " + (newline > 0 ? message.substring(0, newline) : message));
     }
 
+    /** UC-04 — an unknown case id, never a 500. */
+    @ExceptionHandler(CaseNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCaseNotFound(CaseNotFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /** UC-04 AC#6 — retrying a case that is not {@code FAILED}. */
+    @ExceptionHandler(InvalidCaseStateException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidCaseState(InvalidCaseStateException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /** UC-06 AC#5 — the core could not be reached; never a silently empty report. */
+    @ExceptionHandler(CoreUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleCoreUnavailable(CoreUnavailableException ex) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now().toString());

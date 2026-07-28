@@ -108,6 +108,23 @@ public class AccountRecord {
         coreConfigVersion = configVersion;
     }
 
+    /**
+     * The core confirmed — created or adopted (UC-02/UC-04). Never touches {@code
+     * creditAmount}/{@code productCode}: the retry that calls this is a re-run, not an edit.
+     */
+    public void markOpened(String accountId, AccountReasonCode reasonCode) {
+        this.outcome = AccountOutcome.OPENED;
+        this.reasonCode = reasonCode;
+        this.accountId = accountId;
+        this.openedAt = Instant.now();
+    }
+
+    /** The retry budget was exhausted again — the core is still unreachable. */
+    public void markFailed(AccountReasonCode reasonCode) {
+        this.outcome = AccountOutcome.FAILED;
+        this.reasonCode = reasonCode;
+    }
+
     public String getApplicationId() {
         return applicationId;
     }

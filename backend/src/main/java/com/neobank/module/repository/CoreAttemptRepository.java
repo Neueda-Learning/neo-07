@@ -8,4 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface CoreAttemptRepository extends JpaRepository<CoreAttempt, Long> {
 
     List<CoreAttempt> findAllByApplicationIdOrderByOccurredAtAscIdAsc(String applicationId);
+
+    /** How many core calls a case has made so far — the Failed-Opens Queue's attempt count (UC-04). */
+    long countByApplicationId(String applicationId);
 }

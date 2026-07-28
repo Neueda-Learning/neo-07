@@ -50,6 +50,18 @@ server {
     proxy_pass http://$info_backend:8080/info;
   }
 
+  # UC-04 — Failed-Opens Queue. Module-internal operator endpoints, unprefixed (no /api/v1),
+  # so they need their own rules the same way /health and /info do.
+  location = ${BASE_PATH}/queue {
+    set $queue_backend ${BACKEND_HOST};
+    proxy_pass http://$queue_backend:8080/queue;
+  }
+  location ^~ ${BASE_PATH}/cases/ {
+    set $cases_backend ${BACKEND_HOST};
+    rewrite ^${BASE_PATH}(/cases/.*)$ $1 break;
+    proxy_pass http://$cases_backend:8080$uri$is_args$args;
+  }
+
   # ---- the single-page app ----
   #
   # One regex covers all three shapes: "/neo-01" (no trailing slash, which is the URL
