@@ -1,9 +1,14 @@
 package com.neobank.module.integrations.orchestrator;
 
 import com.neobank.module.model.Decision;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -54,6 +59,56 @@ public class OrchestratorClient {
         } catch (Exception e) {
             log.warn("Status update to the orchestrator failed for {}: {} — its timeout sweeper "
                     + "will notice", applicationId, e.toString());
+        }
+    }
+
+    /**
+     * UC-01 name search's remote half: {@code GET /api/v1/applications?name=} — the v5 contract
+     * addition that lets a name resolve to application ids without this module ever storing one.
+     *
+     * <p>Expected shape is a JSON array of objects carrying at least {@code applicationId} — the
+     * same envelope shape the orchestrator already uses elsewhere. <b>Never throws.</b> A search is
+     * a read the operator can just retry, so any failure (orchestrator down, unexpected shape)
+     * degrades to "no name matches" rather than failing the whole board (AC6).</p>
+     */
+    public List<String> searchApplicationIdsByName(String name) {
+        try {
+            List<Map<String, Object>> matches = http.get()
+                    .uri(applicationsUrl + "?name={name}", name)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<Map<String, Object>>>() { });
+            if (matches == null) {
+                return List.of();
+            }
+            return matches.stream()
+                    .map(m -> m.get("applicationId"))
+                    .filter(Objects::nonNull)
+                    .map(Object::toString)
+                    .toList();
+        } catch (Exception e) {
+            log.warn("Name search via the orchestrator failed for '{}': {}", name, e.toString());
+            return List.of();
+        }
+    }
+
+    /**
+     * UC-03's proxy, reused by UC-01 to hydrate the board's applicant-name column live: {@code GET
+     * /api/v1/applications/{applicationId}}. Nothing from the response is ever persisted.
+     *
+     * <p>Empty on any failure — the caller renders a retryable placeholder rather than a 500
+     * (AC6).</p>
+     */
+    public Optional<Map<String, Object>> fetchApplication(String applicationId) {
+        try {
+            Map<String, Object> body = http.get()
+                    .uri(applicationsUrl + "/{id}", applicationId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() { });
+            return Optional.ofNullable(body);
+        } catch (Exception e) {
+            log.warn("Applicant fetch via the orchestrator failed for {}: {}", applicationId,
+                    e.toString());
+            return Optional.empty();
         }
     }
 }

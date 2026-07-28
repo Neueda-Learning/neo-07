@@ -23,6 +23,13 @@ export const statusTone = toneMapper({
  */
 export const STATUSES = ['ACCEPTED', 'REJECTED', 'REFERRED'];
 
+// UC-01's vocabulary — the Account Board's own outcome, not the callback status above.
+export const outcomeTone = toneMapper({
+  OPENED: TONES.POSITIVE,
+  FAILED: TONES.NEGATIVE,
+  IN_PROGRESS: TONES.INFO,
+});
+
 export function time(iso) {
   return iso ? new Date(iso).toLocaleTimeString() : '—';
 }

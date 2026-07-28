@@ -36,4 +36,9 @@ export const api = {
   info: () => request('/info'),
   listApplications: () => request('/api/v1/applications'),
   getApplication: (id) => request(`/api/v1/applications/${id}`),
+  // UC-01 — Search Accounts. Empty `q` is never sent: the board starts empty by design, so the
+  // caller only calls this once there is something to search for.
+  searchAccounts: (q) => request(`/api/v1/accounts/search?q=${encodeURIComponent(q)}`),
+  // Hydrates one row's applicant name, live — never cached server-side, so the UI caches it.
+  getApplicant: (applicationId) => request(`/api/v1/accounts/${applicationId}/applicant`),
 };

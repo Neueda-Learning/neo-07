@@ -19,4 +19,14 @@ public interface AccountRecordRepository extends JpaRepository<AccountRecord, St
 
     List<AccountRecord> findTop10ByOutcomeAndReasonCodeOrderByCreatedAtAsc(
             AccountOutcome outcome, AccountReasonCode reasonCode);
+
+    /**
+     * UC-01 id search. Fetches one row past the 10-row cap so the service can tell "exactly 10"
+     * from "more exist" (AC2's "more — refine your search" flag) without a separate count query.
+     */
+    List<AccountRecord> findTop11ByApplicationIdContainingIgnoreCaseOrderByCreatedAtDesc(
+            String applicationId);
+
+    /** UC-01 name search's second half: the ids the orchestrator resolved, read back locally. */
+    List<AccountRecord> findByApplicationIdInOrderByCreatedAtDesc(List<String> applicationIds);
 }
