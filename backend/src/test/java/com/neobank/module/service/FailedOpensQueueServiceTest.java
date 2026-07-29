@@ -77,6 +77,8 @@ class FailedOpensQueueServiceTest {
     private static AccountRecord failedRecord(String applicationId) {
         AccountRecord record = new AccountRecord(applicationId, "acc-" + applicationId);
         record.pinCoreConfig(CORE_CONFIG_VERSION);
+        record.recordOpeningInputs(
+                3000, true, null, "CREDIT_CARD_REWARDS", CORE_CONFIG_VERSION);
         record.markFailed(AccountReasonCode.ACC_CORE_UNAVAILABLE);
         return record;
     }
@@ -131,7 +133,8 @@ class FailedOpensQueueServiceTest {
         when(coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc("app-1234")).thenReturn(List.of());
         when(coreClient.probe("http://localhost:8080", "app-1234", 2000))
                 .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.MISS, 10, null));
-        when(coreClient.open("http://localhost:8080", "app-1234", null, null, 2000))
+        when(coreClient.open("http://localhost:8080", "app-1234",
+                "CREDIT_CARD_REWARDS", 3000, 2000))
                 .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.CREATED, 20, "CC-0058291"));
 
         service.retry("app-1234");
@@ -139,6 +142,9 @@ class FailedOpensQueueServiceTest {
         assertThat(record.getOutcome()).isEqualTo(AccountOutcome.OPENED);
         assertThat(record.getReasonCode()).isEqualTo(AccountReasonCode.ACC_OPENED);
         assertThat(record.getAccountId()).isEqualTo("CC-0058291");
+        assertThat(record.getCreditAmount()).isEqualTo(3000);
+        assertThat(record.getProductCode()).isEqualTo("CREDIT_CARD_REWARDS");
+        assertThat(record.getProductVersion()).isEqualTo(CORE_CONFIG_VERSION);
 
         ArgumentCaptor<CoreAttempt> attempts = ArgumentCaptor.forClass(CoreAttempt.class);
         verify(coreAttempts, org.mockito.Mockito.times(2)).save(attempts.capture());
@@ -175,7 +181,8 @@ class FailedOpensQueueServiceTest {
         when(coreClient.probe("http://localhost:8080", "app-timeout", 2000))
                 .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.MISS, 10, null))
                 .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.HIT, 12, "CC-RECOVERED"));
-        when(coreClient.open("http://localhost:8080", "app-timeout", null, null, 2000))
+        when(coreClient.open("http://localhost:8080", "app-timeout",
+                "CREDIT_CARD_REWARDS", 3000, 2000))
                 .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.TIMEOUT, 2000, null));
 
         service.retry("app-timeout");
@@ -207,7 +214,8 @@ class FailedOpensQueueServiceTest {
         when(coreConfigs.findTopByOrderByVersionDesc()).thenReturn(Optional.of(config(3, 2000)));
         when(coreClient.probe("http://localhost:8080", "app-1240", 2000))
                 .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.MISS, 5, null));
-        when(coreClient.open("http://localhost:8080", "app-1240", null, null, 2000))
+        when(coreClient.open("http://localhost:8080", "app-1240",
+                "CREDIT_CARD_REWARDS", 3000, 2000))
                 .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.ERROR, 5, null));
 
         service.retry("app-1240");

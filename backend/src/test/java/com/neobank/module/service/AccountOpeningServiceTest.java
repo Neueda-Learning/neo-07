@@ -138,6 +138,10 @@ class AccountOpeningServiceTest {
 
         assertThat(account.getOutcome()).isEqualTo(AccountOutcome.FAILED);
         assertThat(account.getAccountId()).isNull();
+        assertThat(account.getCreditAmount()).isEqualTo(3000);
+        assertThat(account.isCreditAmountFallback()).isTrue();
+        assertThat(account.getProductCode()).isEqualTo("CREDIT_CARD_REWARDS");
+        assertThat(account.getProductVersion()).isEqualTo(1);
         verify(orchestratorClient).applicationStatusUpdate(eq("app-1240"), eq(Decision.REFERRED), anyString());
     }
 
@@ -153,6 +157,7 @@ class AccountOpeningServiceTest {
         service.open(request("app-1", 3000));
 
         verify(account).pinCoreConfig(1);
+        verify(account).recordOpeningInputs(3000, true, null, "CREDIT_CARD_REWARDS", 1);
         verify(coreClient).probe(anyString(), anyInt(), anyString());
     }
 

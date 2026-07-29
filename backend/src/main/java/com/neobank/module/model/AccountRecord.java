@@ -108,6 +108,20 @@ public class AccountRecord {
         coreConfigVersion = configVersion;
     }
 
+    /**
+     * Stores the inputs a later manual retry must reuse before the first Core call is made.
+     * A failed open keeps these values on the anchor; only the outcome and reason change.
+     */
+    public void recordOpeningInputs(Integer creditAmount, boolean creditAmountFallback,
+            String agreementId, String productCode, Integer productVersion) {
+        requireInProgress();
+        this.creditAmount = creditAmount;
+        this.creditAmountFallback = creditAmountFallback;
+        this.agreementId = agreementId;
+        this.productCode = productCode;
+        this.productVersion = productVersion;
+    }
+
     /** UC-02: the engine's decision that an account exists — created or adopted. */
     public void open(String accountId, Integer creditAmount, boolean creditAmountFallback,
             String agreementId, String productCode, Integer productVersion,

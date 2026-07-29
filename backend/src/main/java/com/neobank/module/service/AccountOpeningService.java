@@ -67,12 +67,15 @@ public class AccountOpeningService {
             AccountRecord account = accountRecords.findById(applicationId)
                     .orElseThrow(() -> new IllegalStateException(
                             "account_record for " + applicationId + " must already exist"));
-            account.pinCoreConfig(config.getVersion());
-            accountRecords.save(account);
 
             Application.Product product = request.application() == null ? null : request.application().product();
             Integer requestedCreditLimit = product == null ? null : product.requestedCreditLimit();
             String productCode = product == null ? null : product.productCode();
+
+            account.pinCoreConfig(config.getVersion());
+            account.recordOpeningInputs(
+                    requestedCreditLimit, true, null, productCode, config.getVersion());
+            accountRecords.save(account);
 
             EngineResult result = AccountOpeningEngine.run(
                     config.getRetryBudget(),
