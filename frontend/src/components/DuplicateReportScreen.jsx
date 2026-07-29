@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, DataTable, EmptyState, MetricTile, PageHeader, Toolbar } from '../design-system';
+import { Alert, Button, DataTable, EmptyState, MetricTile, PageHeader, Toolbar } from '../design-system';
 import { time } from '../status.js';
 import { api } from '../api.js';
 
@@ -13,8 +13,11 @@ const POLL_MS = 5000;
  * module's table alone (AC4). Empty is not "no data"; empty is the passing result, and the
  * screen says so. A core that cannot be reached is never rendered as a silently empty report
  * (AC5) — that is an alarm of its own, distinct from "zero duplicates found".
+ *
+ * `onOpenCase` is how a row's case attempt log is one click away (AC6) — only offered when the
+ * duplicate has a matching module record; an orphan (core-only) duplicate has no case to open.
  */
-export default function DuplicateReportScreen() {
+export default function DuplicateReportScreen({ onOpenCase }) {
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
@@ -90,7 +93,21 @@ export default function DuplicateReportScreen() {
               <>
                 <strong>{r.coreAccountIds.length}</strong> core accounts for{' '}
                 <strong>{r.applicationId}</strong>: {r.coreAccountIds.join(', ')}
-                {!r.reference && ' — no matching row in this module\u2019s own table either.'}
+                {r.reference ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    style={{ marginLeft: 'var(--ds-space-4)' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenCase?.(r.applicationId);
+                    }}
+                  >
+                    View case attempt log →
+                  </Button>
+                ) : (
+                  ' — no matching row in this module\u2019s own table either.'
+                )}
               </>
             )}
             empty={

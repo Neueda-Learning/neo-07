@@ -42,6 +42,15 @@ export default function App() {
   const [error, setError] = useState(null);
   const [health, setHealth] = useState(null);
   const [info, setInfo] = useState(null);
+  // The one cross-screen link the app needs: Duplicate Report's rows link to their case's own
+  // attempt log (UC-06 AC#6). Cleared whenever "Account Detail" is opened from the sidebar
+  // directly, so that path always starts from a blank search box like it always has.
+  const [caseLookupId, setCaseLookupId] = useState(null);
+
+  const openCase = useCallback((applicationId) => {
+    setCaseLookupId(applicationId);
+    setScreen('cases');
+  }, []);
 
   const reload = useCallback(async () => {
     try {
@@ -85,7 +94,14 @@ export default function App() {
             product={info?.service ?? 'Module'}
             meta={info ? `${info.serviceId} · ${info.domain}` : undefined}
           />
-          <SideNav items={SCREENS} active={screen} onSelect={setScreen} />
+          <SideNav
+            items={SCREENS}
+            active={screen}
+            onSelect={(id) => {
+              if (id === 'cases') setCaseLookupId(null);
+              setScreen(id);
+            }}
+          />
           {/* Health and refresh lived in the top bar; with the bar gone they belong beside the
               menu rather than inside it — a menu item that is not a screen is a trap. */}
           <div className="app-side-status">
@@ -109,9 +125,9 @@ export default function App() {
         <RequestsScreen requests={requests} error={error} info={info} />
       )}
       {screen === 'accounts' && <AccountBoardScreen />}
-      {screen === 'cases' && <CasesScreen />}
+      {screen === 'cases' && <CasesScreen initialApplicationId={caseLookupId} />}
       {screen === 'failed-opens' && <FailedOpensQueueScreen />}
-      {screen === 'duplicates' && <DuplicateReportScreen />}
+      {screen === 'duplicates' && <DuplicateReportScreen onOpenCase={openCase} />}
       {screen === 'core-panel' && <CoreControlPanelScreen />}
       {screen === 'core-config' && <CoreConfigScreen />}
     </AppShell>
