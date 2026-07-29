@@ -113,14 +113,21 @@ class AccountOpeningEngineTest {
     }
 
     @Test
-    void probeErrorEndsFailedAfterBudgetExhaustedWithoutEverCallingOpen() {
+    void budgetExhaustedEndsFailedWhenTheProbeItselfErrorsEveryCycle() {
+        // The core being fully down (kill switch) fails PROBE too, not just OPEN — a probe
+        // ERROR/TIMEOUT must not short-circuit the cycle, it must still fall through to attempt
+        // OPEN, exactly like a MISS would (regression test for the bug where an unguarded probe
+        // exception escaped run() uncaught and left the case stuck IN_PROGRESS forever).
         AtomicInteger probeCalls = new AtomicInteger();
         AtomicInteger openCalls = new AtomicInteger();
         AccountOpeningEngine.CoreCaller probe = scripted(probeCalls,
                 new CoreCallException(CoreAttemptResult.ERROR, "core call failed"),
                 new CoreCallException(CoreAttemptResult.ERROR, "core call failed"),
                 new CoreCallException(CoreAttemptResult.ERROR, "core call failed"));
-        AccountOpeningEngine.CoreCaller open = scripted(openCalls);
+        AccountOpeningEngine.CoreCaller open = scripted(openCalls,
+                new CoreCallException(CoreAttemptResult.ERROR, "core call failed"),
+                new CoreCallException(CoreAttemptResult.ERROR, "core call failed"),
+                new CoreCallException(CoreAttemptResult.ERROR, "core call failed"));
 
         EngineResult result = AccountOpeningEngine.run(3, "app-1240", 3000, CreditTerms.none(), probe, open);
 
@@ -128,10 +135,36 @@ class AccountOpeningEngineTest {
         assertThat(result.reasonCode()).isEqualTo(AccountReasonCode.ACC_CORE_UNAVAILABLE);
         assertThat(result.accountId()).isNull();
         assertThat(result.openedAt()).isNull();
-        // A probe failure (e.g. the mock core's killSwitch) must never reach open — there is
-        // nothing to open when the core isn't even answering probes.
+        // 3 cycles, both calls attempted every cycle (AC#2's exact "6 attempts" checkpoint shape).
         assertThat(probeCalls.get()).isEqualTo(3);
-        assertThat(openCalls.get()).isEqualTo(0);
+        assertThat(openCalls.get()).isEqualTo(3);
+    }
+
+    @Test
+    void aRecoveryProbeThatAlsoErrorsFailsTheCycleInsteadOfEscapingUncaught() {
+        // Regression test: the recovery probe fired after an OPEN timeout was itself unguarded —
+        // if the core is down for reads too at that exact moment, the exception used to escape
+        // run() uncaught (same bug class as the top-level probe, just a step later). It must
+        // instead fail just this cycle and let the loop continue to the next one.
+        AtomicInteger probeCalls = new AtomicInteger();
+        AtomicInteger openCalls = new AtomicInteger();
+        AccountOpeningEngine.CoreCaller probe = scripted(probeCalls,
+                new CoreCallOutcome(CoreAttemptResult.MISS, null, 5),
+                new CoreCallException(CoreAttemptResult.ERROR, "recovery probe failed"),
+                new CoreCallOutcome(CoreAttemptResult.MISS, null, 5),
+                new CoreCallException(CoreAttemptResult.ERROR, "recovery probe failed"));
+        AccountOpeningEngine.CoreCaller open = scripted(openCalls,
+                new CoreCallException(CoreAttemptResult.TIMEOUT, "core call timed out"),
+                new CoreCallException(CoreAttemptResult.TIMEOUT, "core call timed out"));
+
+        EngineResult result = AccountOpeningEngine.run(2, "app-recovery-fail", 3000, CreditTerms.none(), probe, open);
+
+        assertThat(result.outcome()).isEqualTo(AccountOutcome.FAILED);
+        assertThat(result.reasonCode()).isEqualTo(AccountReasonCode.ACC_CORE_UNAVAILABLE);
+        assertThat(result.accountId()).isNull();
+        // 2 cycles x (1 probe + 1 recovery probe) = 4 probe calls, 1 open call per cycle = 2.
+        assertThat(probeCalls.get()).isEqualTo(4);
+        assertThat(openCalls.get()).isEqualTo(2);
     }
 
     @Test
