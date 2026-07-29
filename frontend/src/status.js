@@ -6,29 +6,14 @@
 // have to learn "VERIFIED", "CLEAR" and "SIGNED" too.
 import { TONES, toneMapper } from './design-system';
 
-export const statusTone = toneMapper({
-  ACCEPTED: TONES.POSITIVE,
-  REJECTED: TONES.NEGATIVE,
-  REFERRED: TONES.WARNING,
-  // Kept although the skeleton never stores it: a row is written only once the work is done. If
-  // you start recording an application before you have decided about it, this is already coloured.
-  'in-progress': TONES.INFO,
-});
-
-/**
- * The statuses the board filters on — the three a module can answer with.
- *
- * `in-progress` is not here on purpose: the placeholder writes its row after the work, so no row
- * is ever in that state and a chip for it would always read zero. Add it if you change that.
- */
-export const STATUSES = ['ACCEPTED', 'REJECTED', 'REFERRED'];
-
-// UC-01's vocabulary — the Account Board's own outcome, not the callback status above.
+// account_record.outcome — the module's real vocabulary; every screen filters on this.
 export const outcomeTone = toneMapper({
   OPENED: TONES.POSITIVE,
   FAILED: TONES.NEGATIVE,
   IN_PROGRESS: TONES.INFO,
 });
+
+export const OUTCOMES = ['IN_PROGRESS', 'OPENED', 'FAILED'];
 
 // UC-06's two failure modes — both an alarm, but distinct enough to read differently at a glance.
 export const duplicateKindTone = toneMapper({

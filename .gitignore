@@ -22,3 +22,8 @@ frontend/dist/
 # Requirement docs dropped in locally for reference — not part of this repo's source
 docs/*.pptx
 references/
+
+# Stakeholder demo prep — local only, never committed
+demo/
+PLAN.md
+DB-SCHEMA.md
