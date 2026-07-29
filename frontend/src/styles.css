@@ -11,6 +11,218 @@
  * placeholder table's three columns), so their rules went with them: CSS for a
  * component that no longer exists is the hardest kind of dead code to notice. */
 
+/* ============================================================================
+ * APPLE SKIN — a theme override, loaded after design-system/styles.css.
+ *
+ * The design system is a token contract: every colour, face, surface and radius a
+ * component paints with is a `--ds-*` custom property, and the ONLY file that names
+ * literals is theme/glass.css. DESIGN.md's theming story is one sentence: "To
+ * reskin: load your own theme file AFTER this one." This block is that file.
+ *
+ * It re-points the contract onto Apple's web design language — SF Pro, a single
+ * Action Blue accent, flat photographic-white surfaces, one shadow — WITHOUT
+ * touching anything in design-system/, so `sync-design-system.sh --check` stays
+ * green. Not one component is edited; the screens name no colour, so they inherit
+ * the new look for free.
+ *
+ * Adapted, not literal: Apple's spec is a marketing gallery (hero tiles, product
+ * renders). This is an operator console (tables, forms, queues). We take the
+ * PRINCIPLES — quiet chrome, single accent, flat surfaces, generous air, tight
+ * display tracking, 17px reading body — and apply them to console patterns.
+ * ==========================================================================*/
+:root,
+[data-ds-theme='glass'] {
+  /* -- Type — SF Pro, with Inter/system fallbacks (Apple's own stack) ------
+   * On macOS/iOS/Safari `-apple-system` + `system-ui` resolve to the real SF Pro
+   * Display/Text; elsewhere the browser's UI sans. No new font files fetched —
+   * this is a pure token swap; the vendored Poppins/Cormorant faces stay unused
+   * on Apple platforms rather than being removed (removing them would edit the DS). */
+  --ds-font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui,
+    'Segoe UI', Roboto, sans-serif;
+  --ds-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    system-ui, sans-serif;
+  /* Display no longer gets a distinct serif; headlines are SF Pro at weight 600.
+   * Large figures stay sans (unchanged intent), but at 600 not the airy 300. */
+  --ds-figure-family: var(--ds-font-sans);
+  --ds-figure-weight: 600;
+  --ds-display-weight: 600;
+
+  /* Apple's "tight" cadence: negative tracking at display sizes, snug leading. */
+  --ds-tracking-tight: -0.022em;
+  --ds-leading-tight: 1.08;
+
+  /* -- Kill the glass ------------------------------------------------------
+   * The four surface hooks + the ground image are the entire glass machinery
+   * (verified: every frosted panel in the DS reads these). Flatten them to
+   * Apple's photographic white with a hairline and no blur/shadow. */
+  --ds-ground-image: none;
+  --ds-ground-fallback: #ffffff;
+  --ds-ground-grain-overlay-opacity: 0;
+  --ds-ground-grain-softlight-opacity: 0;
+
+  --ds-surface-fill: #ffffff;
+  --ds-surface-backdrop: none;
+  --ds-surface-border: 1px solid #e0e0e0; /* Apple hairline */
+  --ds-surface-shadow: none; /* one-shadow discipline: chrome is flat */
+
+  /* -- Surfaces & canvas ---------------------------------------------------
+   * Canvas is Apple parchment (#f5f5f7) so white cards read as raised-by-tone,
+   * not raised-by-shadow — Apple's "colour change is the divider" principle. */
+  --ds-color-canvas: #f5f5f7;
+  --ds-color-surface: #ffffff;
+  --ds-color-surface-sunken: #f5f5f7;
+  --ds-color-surface-hover: #f0f0f2;
+  --ds-color-surface-active: #ebebef;
+
+  --ds-control-fill: #ffffff;
+  --ds-control-fill-hover: #fafafc;
+
+  /* -- Lines — Apple hairlines --------------------------------------------- */
+  --ds-color-border: #e0e0e0;
+  --ds-color-border-subtle: #f0f0f0;
+  --ds-color-border-strong: #d0d0d2;
+
+  /* -- Ink — near-black #1d1d1f, never pure black -------------------------- */
+  --ds-color-text: #1d1d1f;
+  --ds-color-text-secondary: #424245;
+  --ds-color-text-muted: #6e6e73;
+  --ds-color-text-inverse: #ffffff;
+  --ds-color-ink-solid: #1d1d1f;
+
+  /* -- Accent — the single Action Blue. Every "click me" is this, nothing else. */
+  --ds-color-accent: #0066cc;
+  --ds-color-accent-hover: #0071e3;
+  --ds-color-accent-press: #0055b0;
+  --ds-color-accent-soft: rgba(0, 102, 204, 0.1);
+  --ds-color-accent-ink: #ffffff;
+  --ds-color-accent-text: #0066cc;
+  --ds-color-focus: #0071e3;
+
+  /* -- Nav — Apple's true-black global bar --------------------------------- */
+  --ds-color-nav: #000000;
+  --ds-color-nav-ink: #f5f5f7;
+  --ds-color-nav-ink-muted: rgba(245, 245, 247, 0.7);
+  --ds-color-nav-hover: rgba(255, 255, 255, 0.1);
+
+  /* -- Tones — kept semantic, re-tinted to Apple restraint -----------------
+   * Apple ships one accent; a console cannot (a declined account MUST read as
+   * declined, not blue). So tones stay, but muted onto soft tinted chips with a
+   * readable ink — status, not decoration. The four roles per tone are preserved:
+   * surface/border/text = the chip, accent = the mark, ink = the tone as text. */
+  --ds-tone-positive-surface: #e3f5e9;
+  --ds-tone-positive-border: #a6dcb8;
+  --ds-tone-positive-text: #1a7a3c;
+  --ds-tone-positive-ink: #1a7a3c;
+  --ds-tone-positive-accent: #29a745;
+
+  --ds-tone-warning-surface: #fdf2e0;
+  --ds-tone-warning-border: #f2d49b;
+  --ds-tone-warning-text: #8a5a00;
+  --ds-tone-warning-ink: #8a5a00;
+  --ds-tone-warning-accent: #d68a00;
+
+  --ds-tone-negative-surface: #fce8e6;
+  --ds-tone-negative-border: #f2b8b2;
+  --ds-tone-negative-text: #b3261e;
+  --ds-tone-negative-ink: #b3261e;
+  --ds-tone-negative-accent: #d93a30;
+
+  /* "info" is the in-flight/attention tone — mapped to Action Blue's family so it
+   * reads as the system's own live-state colour, not a fifth hue. */
+  --ds-tone-info-surface: #e6f0fb;
+  --ds-tone-info-border: #a9cdf2;
+  --ds-tone-info-text: #0055b0;
+  --ds-tone-info-ink: #0055b0;
+  --ds-tone-info-accent: #0066cc;
+
+  --ds-tone-neutral-surface: #f0f0f2;
+  --ds-tone-neutral-border: #e0e0e0;
+  --ds-tone-neutral-text: #6e6e73;
+  --ds-tone-neutral-ink: #424245;
+  --ds-tone-neutral-accent: #86868b;
+
+  /* -- Data series — Apple blue lead, muted supporting hues ---------------- */
+  --ds-series-1: #0066cc;
+  --ds-series-2: #29a745;
+  --ds-series-3: #d68a00;
+  --ds-series-4: #d93a30;
+  --ds-series-5: #86868b;
+  --ds-series-track: #ebebef;
+
+  /* -- Elevation — the ONE shadow, soft and low. Used for raised cards only. */
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --ds-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --ds-shadow-overlay: 0 12px 40px rgba(0, 0, 0, 0.18);
+  --ds-scrim: rgba(0, 0, 0, 0.4);
+
+  /* -- Radii — Apple's grammar: 8 utility · 12 cards · pill actions -------- */
+  --ds-radius-sm: 6px;
+  --ds-radius-md: 8px;
+  --ds-radius-lg: 12px;
+  --ds-radius-xl: 18px;
+  --ds-radius-pill: 9999px;
+}
+
+/* Reading pace: Apple runs body at 17px. The DS base sets body to --ds-text-md
+ * (13px, dense-console default); nudge the document up so paragraphs read at the
+ * Apple cadence while the dense table/label scale is untouched. */
+body {
+  font-size: var(--ds-text-xl); /* 17px */
+  letter-spacing: -0.01em;
+}
+
+/* Primary actions are pill-shaped — the Apple action signal — and press with the
+ * system-wide scale micro-interaction. Scoped to the accent (primary) variant so
+ * ghost/secondary buttons keep their rect utility grammar. */
+.ds-btn--primary {
+  border-radius: var(--ds-radius-pill);
+}
+
+.ds-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Filter chips → Apple's segmented control. Apple never shows a row of individually
+ * outlined capsules; a mutually-exclusive filter is ONE control — a light gray track
+ * with the selected segment lifted as a white capsule. The DS renders these as
+ * `.ds-chip-group` > `.ds-chip[aria-pressed]`, so we reshape those from the app layer:
+ * the group becomes the track, the chips lose their borders, the pressed one becomes
+ * the raised white segment. No DS file edited, no markup changed. */
+.ds-chip-group {
+  gap: 2px;
+  padding: 2px;
+  background: #ebebeb; /* segmented-control track (Apple's ~#e9e9eb) */
+  border-radius: var(--ds-radius-md);
+  flex-wrap: nowrap;
+}
+
+.ds-chip {
+  height: var(--ds-control-height-sm);
+  border: 0;
+  background: transparent;
+  border-radius: 7px; /* slightly tighter than the track, so it nests cleanly */
+  color: var(--ds-color-text-secondary);
+  font-weight: var(--ds-weight-medium);
+}
+
+.ds-chip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--ds-color-text);
+}
+
+/* The selected segment: a white capsule that reads as raised, with the one soft
+ * shadow — ink text, NOT the blue ring the DS default gives. */
+.ds-chip[aria-pressed='true'] {
+  background: #ffffff;
+  border: 0;
+  color: var(--ds-color-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.ds-chip[aria-pressed='true']:hover:not(:disabled) {
+  background: #ffffff;
+}
+
 /* Health and refresh, under the side menu. Not menu items — a row in a menu that is
  * not a screen is a trap — and not a top bar either, because there is no longer one. */
 .app-side-status {
@@ -18,4 +230,47 @@
   align-items: center;
   gap: var(--ds-space-3);
   padding: 0 var(--ds-space-2);
+}
+
+/* The team's footer block: a wordmark over the four member names. Two tiers so the mark reads as
+ * identity and the names stay a quiet signature. Every value is a design-system token — no colour,
+ * no size lives here that the system does not already own. */
+.app-team-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-2);
+  text-align: center;
+}
+
+.app-team-mark {
+  display: block;
+  overflow: visible;
+}
+
+/* Outlined ("hollow") glyphs: stroke-only in the deep ink so the glass shows
+   through the letters. Heavy tracking gives the thin strokes room to breathe. */
+.app-team-mark__text {
+  font-size: var(--ds-text-2xl);
+  font-weight: var(--ds-weight-bold);
+  letter-spacing: 2px;
+  fill: none;
+  stroke: var(--ds-color-text);
+  stroke-width: 1;
+  paint-order: stroke;
+}
+
+/* The "4" is the brand mark: the one solid glyph, filled volt and kept in the
+   ink outline so it reads as a punch of colour, not a gap. */
+.app-team-mark__accent {
+  fill: var(--ds-tone-info-surface);
+  stroke: var(--ds-color-text);
+  stroke-width: 1;
+}
+
+.app-team-members {
+  font-size: var(--ds-text-sm);
+  color: var(--ds-color-text-muted);
+  letter-spacing: 0.2px;
+  text-align: center;
 }
