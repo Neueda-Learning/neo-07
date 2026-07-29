@@ -61,7 +61,7 @@ class FailedOpensQueueServiceTest {
         service = new FailedOpensQueueService(accountRecords, coreAttempts, coreConfigs, coreClient, orchestrator);
 
         when(accountRecords.save(any(AccountRecord.class))).thenAnswer(call -> call.getArgument(0));
-        when(coreConfigs.findById(CORE_CONFIG_VERSION))
+        when(coreConfigs.findTopByOrderByVersionDesc())
                 .thenReturn(Optional.of(config(3, 2000)));
     }
 
@@ -204,7 +204,7 @@ class FailedOpensQueueServiceTest {
         when(accountRecords.findById("app-1240")).thenReturn(Optional.of(record));
         when(coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc("app-1240"))
                 .thenReturn(List.of(priorProbe, priorOpen));
-        when(coreConfigs.findById(CORE_CONFIG_VERSION)).thenReturn(Optional.of(config(3, 2000)));
+        when(coreConfigs.findTopByOrderByVersionDesc()).thenReturn(Optional.of(config(3, 2000)));
         when(coreClient.probe("http://localhost:8080", "app-1240", 2000))
                 .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.MISS, 5, null));
         when(coreClient.open("http://localhost:8080", "app-1240", null, null, 2000))
@@ -223,5 +223,24 @@ class FailedOpensQueueServiceTest {
 
         verify(orchestrator, never()).applicationStatusUpdate(anyString(), any(), anyString());
         verify(accountRecords, never()).save(any(AccountRecord.class));
+    }
+
+    @Test
+    void retryUsesTheCurrentConfigWhilePreservingTheOriginalDecisionVersion() {
+        AccountRecord record = failedRecord("app-current-config");
+        when(accountRecords.findById("app-current-config")).thenReturn(Optional.of(record));
+        when(coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc("app-current-config"))
+                .thenReturn(List.of());
+        when(coreConfigs.findTopByOrderByVersionDesc())
+                .thenReturn(Optional.of(new CoreConfig(
+                        2, 1, 3000, "http://localhost:8080", new ObjectMapper().createObjectNode())));
+        when(coreClient.probe("http://localhost:8080", "app-current-config", 3000))
+                .thenReturn(new CoreOpsClient.CoreCallOutcome(CoreAttemptResult.HIT, 7, "CC-CURRENT"));
+
+        service.retry("app-current-config");
+
+        assertThat(record.getCoreConfigVersion()).isEqualTo(CORE_CONFIG_VERSION);
+        assertThat(record.getOutcome()).isEqualTo(AccountOutcome.OPENED);
+        verify(coreClient).probe("http://localhost:8080", "app-current-config", 3000);
     }
 }

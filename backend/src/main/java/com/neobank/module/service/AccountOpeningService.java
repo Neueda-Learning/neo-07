@@ -157,7 +157,7 @@ public class AccountOpeningService {
     void apply(AccountRecord account, EngineResult result, String productCode, Integer configVersion) {
         if (result.outcome() == AccountOutcome.OPENED) {
             account.open(result.accountId(), result.creditAmount(), result.creditAmountFallback(),
-                    result.agreementId(), productCode, null, result.reasonCode(), result.openedAt());
+                    result.agreementId(), productCode, configVersion, result.reasonCode(), result.openedAt());
         } else {
             account.fail(result.reasonCode());
         }

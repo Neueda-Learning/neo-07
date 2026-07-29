@@ -6,9 +6,7 @@ import com.neobank.module.integrations.orchestrator.OrchestratorClient;
 import com.neobank.module.model.AccountRecord;
 import com.neobank.module.repository.AccountRecordRepository;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,27 +45,26 @@ public class AccountSearchService {
             return AccountSearchResponse.EMPTY;
         }
 
-        // LinkedHashMap keeps insertion order stable before the final sort; a case matching both
-        // by id and by name must still count once.
-        Map<String, AccountRecord> byId = new LinkedHashMap<>();
-        for (AccountRecord row : accountRecords
-                .findTop11ByApplicationIdContainingIgnoreCaseOrderByCreatedAtDesc(needle)) {
-            byId.put(row.getApplicationId(), row);
+        List<AccountRecord> idMatches = accountRecords
+                .findTop11ByApplicationIdContainingIgnoreCaseOrderByCreatedAtDesc(needle);
+        if (!idMatches.isEmpty()) {
+            return response(idMatches);
         }
 
         List<String> nameMatchIds = orchestrator.searchApplicationIdsByName(needle);
-        if (!nameMatchIds.isEmpty()) {
-            for (AccountRecord row : accountRecords.findByApplicationIdInOrderByCreatedAtDesc(nameMatchIds)) {
-                byId.putIfAbsent(row.getApplicationId(), row);
-            }
+        if (nameMatchIds.isEmpty()) {
+            return AccountSearchResponse.EMPTY;
         }
+        return response(accountRecords.findByApplicationIdInOrderByCreatedAtDesc(nameMatchIds));
+    }
 
-        List<AccountRecord> merged = byId.values().stream()
+    private static AccountSearchResponse response(List<AccountRecord> matches) {
+        List<AccountRecord> ordered = matches.stream()
                 .sorted(Comparator.comparing(AccountRecord::getCreatedAt).reversed())
                 .toList();
 
-        boolean hasMore = merged.size() > LIMIT;
-        List<AccountSearchResult> results = merged.stream()
+        boolean hasMore = ordered.size() > LIMIT;
+        List<AccountSearchResult> results = ordered.stream()
                 .limit(LIMIT)
                 .map(AccountSearchResult::of)
                 .toList();
