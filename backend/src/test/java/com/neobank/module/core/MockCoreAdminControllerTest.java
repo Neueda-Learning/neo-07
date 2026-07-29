@@ -71,4 +71,51 @@ class MockCoreAdminControllerTest {
                 .andExpect(jsonPath("$.killSwitch").value(false))
                 .andExpect(jsonPath("$.timeoutTrap").value(true));
     }
+
+    @Test
+    void failureRateOfOneIsAccepted() throws Exception {
+        mvc.perform(put("/core/admin/dials").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"failureRate\":1.0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.failureRate").value(1.0));
+    }
+
+    @Test
+    void failureRateAboveOneIsRejected() throws Exception {
+        mvc.perform(put("/core/admin/dials").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"failureRate\":1.1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("failureRate")));
+
+        // Rejected request must not have mutated the store.
+        mvc.perform(get("/core/admin/dials"))
+                .andExpect(jsonPath("$.failureRate").value(0.0));
+    }
+
+    @Test
+    void negativeFailureRateIsRejected() throws Exception {
+        mvc.perform(put("/core/admin/dials").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"failureRate\":-0.1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("failureRate")));
+    }
+
+    @Test
+    void negativeLatencyMsIsRejected() throws Exception {
+        mvc.perform(put("/core/admin/dials").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"latencyMs\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("latencyMs")));
+
+        mvc.perform(get("/core/admin/dials"))
+                .andExpect(jsonPath("$.latencyMs").value(0));
+    }
+
+    @Test
+    void latencyMsOfZeroIsAccepted() throws Exception {
+        mvc.perform(put("/core/admin/dials").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"latencyMs\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latencyMs").value(0));
+    }
 }
