@@ -12,6 +12,7 @@ import com.neobank.module.model.CaseNotFoundException;
 import com.neobank.module.model.CoreAttemptKind;
 import com.neobank.module.model.CoreAttemptResult;
 import com.neobank.module.service.CaseService;
+import com.neobank.module.service.OverrideCaseService;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,9 @@ class CaseControllerTest {
     @MockBean
     private CaseService cases;
 
+    @MockBean
+    private OverrideCaseService overrides;
+
     @Test
     void getCaseReturnsTheFullContractShape() throws Exception {
         CaseDetailView view = new CaseDetailView(
@@ -37,7 +41,8 @@ class CaseControllerTest {
                 "CREDIT_CARD_REWARDS", 1, "cus-000101", "crd-000064", 1,
                 List.of(
                         new CaseDetailView.AttemptView(1, CoreAttemptKind.PROBE, CoreAttemptResult.MISS, 41),
-                        new CaseDetailView.AttemptView(1, CoreAttemptKind.OPEN, CoreAttemptResult.CREATED, 212)));
+                        new CaseDetailView.AttemptView(1, CoreAttemptKind.OPEN, CoreAttemptResult.CREATED, 212)),
+                List.of());
         when(cases.getCaseDetail("app-1234")).thenReturn(view);
 
         mvc.perform(get("/cases/app-1234"))

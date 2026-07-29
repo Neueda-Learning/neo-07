@@ -7,6 +7,7 @@ import com.neobank.module.model.AccountRecord;
 import com.neobank.module.model.CaseNotFoundException;
 import com.neobank.module.repository.AccountRecordRepository;
 import com.neobank.module.repository.CoreAttemptRepository;
+import com.neobank.module.repository.OverrideLogRepository;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +25,14 @@ public class CaseService {
 
     private final AccountRecordRepository accountRecords;
     private final CoreAttemptRepository coreAttempts;
+    private final OverrideLogRepository overrides;
     private final OrchestratorClient orchestratorClient;
 
     public CaseService(AccountRecordRepository accountRecords, CoreAttemptRepository coreAttempts,
-            OrchestratorClient orchestratorClient) {
+            OverrideLogRepository overrides, OrchestratorClient orchestratorClient) {
         this.accountRecords = accountRecords;
         this.coreAttempts = coreAttempts;
+        this.overrides = overrides;
         this.orchestratorClient = orchestratorClient;
     }
 
@@ -37,7 +40,10 @@ public class CaseService {
     public CaseDetailView getCaseDetail(String applicationId) {
         AccountRecord account = accountRecords.findById(applicationId)
                 .orElseThrow(() -> new CaseNotFoundException(applicationId));
-        return CaseDetailView.of(account, coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc(applicationId));
+        return CaseDetailView.of(
+                account,
+                coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc(applicationId),
+                overrides.findAllByApplicationIdOrderByOverriddenAtAscIdAsc(applicationId));
     }
 
     /** Empty means the orchestrator did not answer — the controller renders that as a 502. */

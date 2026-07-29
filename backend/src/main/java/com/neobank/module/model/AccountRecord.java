@@ -156,6 +156,30 @@ public class AccountRecord {
         this.reasonCode = reasonCode;
     }
 
+    /**
+     * UC-07: a human corrects only the outcome and, when opening, the confirmed account id.
+     *
+     * <p>The machine's reason code and attempt history remain untouched. The operator's reason is
+     * stored separately in {@code override_log}, preserving both versions of the story.</p>
+     */
+    public void overrideOutcome(AccountOutcome newOutcome, String confirmedAccountId) {
+        if (newOutcome != AccountOutcome.OPENED && newOutcome != AccountOutcome.FAILED) {
+            throw new IllegalArgumentException("override outcome must be OPENED or FAILED");
+        }
+        if (newOutcome == AccountOutcome.OPENED
+                && (confirmedAccountId == null || confirmedAccountId.isBlank())) {
+            throw new IllegalArgumentException("account id is required when overriding to OPENED");
+        }
+        this.outcome = newOutcome;
+        if (newOutcome == AccountOutcome.OPENED) {
+            this.accountId = confirmedAccountId;
+            this.openedAt = Instant.now();
+        } else {
+            this.accountId = null;
+            this.openedAt = null;
+        }
+    }
+
     public String getApplicationId() {
         return applicationId;
     }
