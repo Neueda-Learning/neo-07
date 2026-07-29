@@ -12,6 +12,44 @@ import { api } from './api.js';
 const POLL_MS = 2000;
 const HEALTH_MS = 10000;
 
+const TEAM_MEMBERS = ['Geoff', 'Rick', 'Carrie', 'Coco'];
+
+/**
+ * The team's footer block. An outlined ("hollow") wordmark over the member names — belongs to us,
+ * not to the design system, so it lives here and is styled in `src/styles.css` with `--ds-*`
+ * variables only (no hex, no new deps). The letters are stroke-only (`fill: none`) in the deep
+ * text ink so the pale glass shows through them; the "4" is the one solid glyph, filled volt and
+ * ink-outlined to pop as the brand mark. All colours are theme tokens, so it re-tints with the
+ * palette.
+ */
+function TeamWordmark() {
+  return (
+    <svg
+      className="app-team-mark"
+      viewBox="0 0 230 34"
+      height="26"
+      role="img"
+      aria-label="Trans4mer"
+    >
+      <text x="115" y="24" textAnchor="middle" className="app-team-mark__text">
+        TRANS<tspan className="app-team-mark__accent">4</tspan>MER
+      </text>
+    </svg>
+  );
+}
+
+/**
+ * The team's footer block: the wordmark over the member names.
+ */
+function TeamFooter() {
+  return (
+    <div className="app-team-footer">
+      <TeamWordmark />
+      <div className="app-team-members">{TEAM_MEMBERS.join(' · ')}</div>
+    </div>
+  );
+}
+
 /**
  * The screens in the side menu.
  *
@@ -105,7 +143,7 @@ export default function App() {
           </div>
         </>
       }
-      footer="One of ten modules · applications arrive from the orchestrator, never from this UI"
+      footer={<TeamFooter />}
     >
       {screen === 'applications' && (
         <RequestsScreen requests={requests} error={error} info={info} />
