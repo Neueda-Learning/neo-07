@@ -1,6 +1,7 @@
 package com.neobank.module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -15,6 +16,7 @@ import com.neobank.module.model.AccountOutcome;
 import com.neobank.module.model.AccountRecord;
 import com.neobank.module.repository.AccountRecordRepository;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -110,16 +112,54 @@ class ApplicationServiceTest {
     }
 
     @Test
-    void aPersistenceFailureIsLoggedNotThrown() {
-        // A module error here must not crash the executor's worker thread.
+    void theRowIsCommittedBeforeTheEngineRunsNotAfter() {
+        // A non-inline executor that only captures the submitted task — proves the row insert
+        // happens on the calling thread, before the engine's task is ever run, not inside it
+        // (UC-00 AC#2: "before the 202 is sent... a crash right after the ack loses nothing").
+        AtomicReference<Runnable> captured = new AtomicReference<>();
+        ApplicationService capturingService = new ApplicationService(
+                captured::set, accountRecords, referenceGenerator, accountOpeningService);
+        when(accountRecords.findById("SIM-06")).thenReturn(Optional.empty());
+
+        capturingService.processApplicationAsync(request("SIM-06"));
+
+        // The row is already saved even though the captured task hasn't run yet.
+        verify(accountRecords).save(any(AccountRecord.class));
+        verifyNoInteractions(accountOpeningService);
+
+        captured.get().run();
+
+        verify(accountOpeningService).open(any(ApplicationRequest.class));
+    }
+
+    @Test
+    void anUnexpectedPersistenceFailurePropagatesRatherThanFalselyAckingA202() {
+        // UC-00 AC#2: the row must be committed before the ack. A genuine failure to commit it
+        // (not the expected concurrent-insert race, which createAccountRecordIfAbsent already
+        // handles internally) must surface as an error, not a silent log line behind a 202 that
+        // would otherwise lie about a row existing that was never actually written.
         when(accountRecords.findById("SIM-04")).thenReturn(Optional.empty());
         doThrow(new IllegalStateException("database on fire"))
                 .when(accountRecords).save(any(AccountRecord.class));
 
+        assertThatThrownBy(() -> service.processApplication(request("SIM-04")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("database on fire");
+        verifyNoInteractions(accountOpeningService);
+    }
+
+    @Test
+    void anEngineFailureAfterTheRowIsCommittedIsLoggedNotThrown() {
+        // A module error here must not crash the executor's worker thread — but only once the
+        // row is already safely committed, which is the whole point of Fix 0.
+        AccountRecord existing = new AccountRecord("SIM-04", "acc-existing1");
+        when(accountRecords.findById("SIM-04")).thenReturn(Optional.of(existing));
+        doThrow(new IllegalStateException("core on fire")).when(accountOpeningService).replay(existing);
+
         service.processApplication(request("SIM-04"));
 
         // No exception propagates out of processApplication — reaching this line is the assertion.
-        verifyNoInteractions(accountOpeningService);
+        verify(accountOpeningService).replay(existing);
     }
 
     @Test

@@ -30,6 +30,12 @@ export const outcomeTone = toneMapper({
   IN_PROGRESS: TONES.INFO,
 });
 
+// UC-06's two failure modes — both an alarm, but distinct enough to read differently at a glance.
+export const duplicateKindTone = toneMapper({
+  CORE_DUPLICATE: TONES.NEGATIVE,
+  MISSING_AT_CORE: TONES.WARNING,
+});
+
 export function time(iso) {
   return iso ? new Date(iso).toLocaleTimeString() : '—';
 }

@@ -100,7 +100,15 @@ public final class AccountOpeningEngine {
         String agreementId = hasApprovedLimit ? creditTerms.agreementId() : null;
 
         for (int cycle = 1; cycle <= retryBudget; cycle++) {
-            CoreCallOutcome probeOutcome = probe.call(applicationId, cycle);
+            CoreCallOutcome probeOutcome;
+            try {
+                probeOutcome = probe.call(applicationId, cycle);
+            } catch (CoreCallException e) {
+                // The core itself didn't answer the probe — nothing was committed to adopt or
+                // recover; this is just a failed cycle, exactly like an open ERROR. A probe never
+                // commits an account, so there is nothing to recovery-probe for here.
+                continue;
+            }
             if (probeOutcome.result() == CoreAttemptResult.HIT) {
                 return new EngineResult(AccountOutcome.OPENED, AccountReasonCode.ACC_DUPLICATE_PREVENTED,
                         probeOutcome.accountId(), creditAmount, creditAmountFallback, agreementId, Instant.now());
