@@ -79,6 +79,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    /** UC-07: only terminal outcomes are valid, and OPENED must carry a confirmed account id. */
+    @ExceptionHandler(InvalidOverrideException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidOverride(InvalidOverrideException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     /** UC-06 AC#5 — the core could not be reached; never a silently empty report. */
     @ExceptionHandler(CoreUnavailableException.class)
     public ResponseEntity<Map<String, Object>> handleCoreUnavailable(CoreUnavailableException ex) {

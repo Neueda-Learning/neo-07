@@ -5,6 +5,10 @@ import com.neobank.module.model.AccountReasonCode;
 import com.neobank.module.model.AccountRecord;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /** Persistence access for the one durable account-opening anchor per application. */
@@ -29,4 +33,10 @@ public interface AccountRecordRepository extends JpaRepository<AccountRecord, St
 
     /** UC-01 name search's second half: the ids the orchestrator resolved, read back locally. */
     List<AccountRecord> findByApplicationIdInOrderByCreatedAtDesc(List<String> applicationIds);
+
+    /** UC-07 serializes concurrent operator corrections for the same anchor row. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select account from AccountRecord account where account.applicationId = :applicationId")
+    Optional<AccountRecord> findByApplicationIdForUpdate(
+            @Param("applicationId") String applicationId);
 }

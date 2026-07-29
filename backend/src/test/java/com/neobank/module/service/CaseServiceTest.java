@@ -16,6 +16,7 @@ import com.neobank.module.model.CoreAttemptKind;
 import com.neobank.module.model.CoreAttemptResult;
 import com.neobank.module.repository.AccountRecordRepository;
 import com.neobank.module.repository.CoreAttemptRepository;
+import com.neobank.module.repository.OverrideLogRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ class CaseServiceTest {
 
     private AccountRecordRepository accountRecords;
     private CoreAttemptRepository coreAttempts;
+    private OverrideLogRepository overrides;
     private OrchestratorClient orchestratorClient;
     private CaseService service;
 
@@ -34,8 +36,9 @@ class CaseServiceTest {
     void setUp() {
         accountRecords = mock(AccountRecordRepository.class);
         coreAttempts = mock(CoreAttemptRepository.class);
+        overrides = mock(OverrideLogRepository.class);
         orchestratorClient = mock(OrchestratorClient.class);
-        service = new CaseService(accountRecords, coreAttempts, orchestratorClient);
+        service = new CaseService(accountRecords, coreAttempts, overrides, orchestratorClient);
     }
 
     @Test
@@ -47,6 +50,8 @@ class CaseServiceTest {
         when(coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc("app-1234")).thenReturn(List.of(
                 new CoreAttempt("app-1234", 1, CoreAttemptKind.PROBE, CoreAttemptResult.MISS, "app-1234", 41L),
                 new CoreAttempt("app-1234", 1, CoreAttemptKind.OPEN, CoreAttemptResult.CREATED, "app-1234", 212L)));
+        when(overrides.findAllByApplicationIdOrderByOverriddenAtAscIdAsc("app-1234"))
+                .thenReturn(List.of());
 
         CaseDetailView view = service.getCaseDetail("app-1234");
 

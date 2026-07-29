@@ -47,6 +47,12 @@ export const api = {
   getCase: (applicationId) => request(`/cases/${applicationId}`),
   // UC-03 — View Applicant: the sidebar proxy, never persisted.
   getCaseApplicant: (applicationId) => request(`/cases/${applicationId}/applicant`),
+  // UC-07 — a human correction only: update the anchor, append override_log, callback the journey.
+  overrideCase: (applicationId, body) =>
+    request(`/cases/${applicationId}/override`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   // UC-04 — Failed-Opens Queue. `retryCase` is this module's one write action from the UI: an
   // operator re-running probe-then-open once the core is believed to be back, never the applicant.
   getFailedOpensQueue: () => request('/queue'),

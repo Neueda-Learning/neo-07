@@ -12,6 +12,7 @@ import {
 } from '../design-system';
 import { money, outcomeTone } from '../status.js';
 import { api } from '../api.js';
+import OverrideCaseModal from './OverrideCaseModal.jsx';
 
 function attemptTitle(attempt) {
   return `${attempt.kind} ${attempt.result}`;
@@ -29,6 +30,8 @@ export default function CaseDetailScreen({ applicationId }) {
   const [caseError, setCaseError] = useState(null);
   const [applicant, setApplicant] = useState(null);
   const [applicantError, setApplicantError] = useState(null);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideNotice, setOverrideNotice] = useState(null);
 
   const loadCase = () => {
     setCaseError(null);
@@ -117,7 +120,18 @@ export default function CaseDetailScreen({ applicationId }) {
         title={`Case ${applicationId}`}
         badge={<Badge tone={outcomeTone(caseDetail.outcome)}>{caseDetail.outcome}</Badge>}
         meta={`${caseDetail.productCode ?? '—'} · config v${caseDetail.coreConfigVersion ?? '—'}`}
+        actions={
+          <Button variant="primary" onClick={() => setOverrideOpen(true)}>
+            Override decision…
+          </Button>
+        }
       />
+
+      {overrideNotice && (
+        <Alert tone="positive" title="Override recorded">
+          {overrideNotice}
+        </Alert>
+      )}
 
       <Split sidebar={sidebar}>
         <Card title="Account" subtitle={caseDetail.reference}>
@@ -144,7 +158,41 @@ export default function CaseDetailScreen({ applicationId }) {
             }))}
           />
         </Card>
+        <Card
+          title="Override history"
+          subtitle={`${caseDetail.overrides?.length ?? 0} decision${
+            caseDetail.overrides?.length === 1 ? '' : 's'
+          }`}
+        >
+          {caseDetail.overrides?.length ? (
+            <Timeline
+              items={caseDetail.overrides.map((override, index) => ({
+                id: index,
+                title: `${override.oldOutcome} → ${override.newOutcome}`,
+                detail: `${override.reason} · ${override.operator}${
+                  override.accountId ? ` · ${override.accountId}` : ''
+                }`,
+                when: new Date(override.overriddenAt).toLocaleString(),
+              }))}
+            />
+          ) : (
+            <Caption>No manual decisions recorded.</Caption>
+          )}
+        </Card>
       </Split>
+
+      <OverrideCaseModal
+        open={overrideOpen}
+        applicationId={applicationId}
+        currentOutcome={caseDetail.outcome}
+        currentAccountId={caseDetail.accountId}
+        onClose={() => setOverrideOpen(false)}
+        onSaved={(updated) => {
+          setCaseDetail(updated);
+          setOverrideOpen(false);
+          setOverrideNotice('The case was updated, audited, and the orchestrator was notified.');
+        }}
+      />
     </>
   );
 }
