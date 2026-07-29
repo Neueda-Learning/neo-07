@@ -1,10 +1,8 @@
 package com.neobank.module.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -64,13 +62,13 @@ class AccountSearchServiceTest {
     void searchesLocallyByApplicationId() {
         when(accountRecords.findTop11ByApplicationIdContainingIgnoreCaseOrderByCreatedAtDesc("app-1234"))
                 .thenReturn(List.of(row("app-1234", AccountOutcome.OPENED, Instant.now())));
-        when(orchestrator.searchApplicationIdsByName("app-1234")).thenReturn(List.of());
 
         AccountSearchResponse response = service.search("app-1234");
 
         assertThat(response.hasMore()).isFalse();
         assertThat(response.results()).singleElement()
                 .satisfies(r -> assertThat(r.applicationId()).isEqualTo("app-1234"));
+        verifyNoInteractions(orchestrator);
     }
 
     @Test
@@ -91,33 +89,27 @@ class AccountSearchServiceTest {
     }
 
     @Test
-    void aCaseMatchingBothIdAndNameCountsOnce() {
+    void aLocalIdMatchDoesNotFallThroughToNameSearch() {
         AccountRecord shared = row("app-1234", AccountOutcome.OPENED, Instant.now());
         when(accountRecords.findTop11ByApplicationIdContainingIgnoreCaseOrderByCreatedAtDesc(anyString()))
-                .thenReturn(List.of(shared));
-        when(orchestrator.searchApplicationIdsByName(anyString())).thenReturn(List.of("app-1234"));
-        when(accountRecords.findByApplicationIdInOrderByCreatedAtDesc(anyList()))
                 .thenReturn(List.of(shared));
 
         AccountSearchResponse response = service.search("app-1234");
 
         assertThat(response.results()).hasSize(1);
+        verifyNoInteractions(orchestrator);
     }
 
     @Test
     void doesNotCallTheOrchestratorWhenLocalIdSearchAlreadyOverflows() {
-        // Not a hard requirement, just documents that both sources are always consulted —
-        // AC3 asks for id search to work "entirely from the local table" but says nothing about
-        // skipping the name lookup, so this test only pins today's simple behaviour.
         when(accountRecords.findTop11ByApplicationIdContainingIgnoreCaseOrderByCreatedAtDesc(anyString()))
                 .thenReturn(elevenRows());
-        when(orchestrator.searchApplicationIdsByName(anyString())).thenReturn(List.of());
 
         AccountSearchResponse response = service.search("app-");
 
         assertThat(response.hasMore()).isTrue();
         assertThat(response.results()).hasSize(10);
-        verify(orchestrator).searchApplicationIdsByName("app-");
+        verifyNoInteractions(orchestrator);
     }
 
     @Test

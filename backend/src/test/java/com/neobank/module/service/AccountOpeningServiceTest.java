@@ -99,6 +99,7 @@ class AccountOpeningServiceTest {
 
         assertThat(account.getOutcome()).isEqualTo(AccountOutcome.OPENED);
         assertThat(account.getAccountId()).isEqualTo("CC-0058291");
+        assertThat(account.getProductVersion()).isEqualTo(1);
         assertThat(account.getCoreConfigVersion()).isEqualTo(1);
 
         verify(orchestratorClient).applicationStatusUpdate(eq("app-1234"), eq(Decision.ACCEPTED), anyString());

@@ -65,8 +65,12 @@ public class CoreConfigService {
                 errors.add("catalogue is missing " + productCode);
                 continue;
             }
+            JsonNode apr = entry.get("apr");
             JsonNode limitMin = entry.get("limitMin");
             JsonNode limitMax = entry.get("limitMax");
+            if (apr == null || !apr.isNumber()) {
+                errors.add(productCode + " apr is required and must be a number");
+            }
             if (limitMin == null || limitMax == null) {
                 errors.add(productCode + " must have limitMin and limitMax");
             } else if (!limitMin.isIntegralNumber() || !limitMax.isIntegralNumber()) {

@@ -78,9 +78,11 @@ public class FailedOpensQueueService {
     }
 
     /**
-     * Re-runs probe-then-open for one parked case. Always PROBES before it OPENs, for every cycle
-     * the pinned config's retry budget allows — "the budget applies anew" (build notes): a case
-     * that failed after its original 3 cycles gets a fresh 3, not zero.
+     * Re-runs probe-then-open for one parked case under the current config version. Always PROBES
+     * before it OPENs, for every cycle the current retry budget allows — "the budget applies
+     * anew" (build notes): a case that failed after its original 3 cycles gets the current
+     * version's full budget, not zero. The anchor keeps its original config version so the first
+     * automated decision remains explainable.
      *
      * @throws RetryCaseNotFoundException   unknown applicationId (AC#6 — 404)
      * @throws InvalidCaseStateException the case is not currently FAILED (AC#6 — 400)
@@ -93,9 +95,8 @@ public class FailedOpensQueueService {
                     "case " + applicationId + " is not FAILED — nothing to retry");
         }
 
-        CoreConfig config = coreConfigs.findById(record.getCoreConfigVersion())
-                .orElseThrow(() -> new IllegalStateException(
-                        "pinned core config version " + record.getCoreConfigVersion() + " is missing"));
+        CoreConfig config = coreConfigs.findTopByOrderByVersionDesc()
+                .orElseThrow(() -> new IllegalStateException("no current core config exists"));
 
         int nextCycle = coreAttempts.findAllByApplicationIdOrderByOccurredAtAscIdAsc(applicationId).stream()
                 .mapToInt(CoreAttempt::getCycleNo)

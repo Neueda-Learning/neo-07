@@ -88,6 +88,30 @@ class CoreConfigServiceTest {
     }
 
     @Test
+    void catalogueMissingAprIsRejected() throws Exception {
+        JsonNode catalogue = MAPPER.readTree("""
+                {"CREDIT_CARD_STANDARD":{"limitMin":250,"limitMax":3000},
+                 "CREDIT_CARD_REWARDS":{"apr":24.9,"limitMin":500,"limitMax":10000},
+                 "CREDIT_CARD_STUDENT":{"apr":14.9,"limitMin":100,"limitMax":1500}}
+                """);
+
+        assertThat(CoreConfigService.validate(request(3, 2000, catalogue)))
+                .anyMatch(error -> error.contains("CREDIT_CARD_STANDARD") && error.contains("apr"));
+    }
+
+    @Test
+    void nonNumericAprIsRejected() throws Exception {
+        JsonNode catalogue = MAPPER.readTree("""
+                {"CREDIT_CARD_STANDARD":{"apr":"19.9%","limitMin":250,"limitMax":3000},
+                 "CREDIT_CARD_REWARDS":{"apr":24.9,"limitMin":500,"limitMax":10000},
+                 "CREDIT_CARD_STUDENT":{"apr":14.9,"limitMin":100,"limitMax":1500}}
+                """);
+
+        assertThat(CoreConfigService.validate(request(3, 2000, catalogue)))
+                .anyMatch(error -> error.contains("CREDIT_CARD_STANDARD") && error.contains("apr"));
+    }
+
+    @Test
     void limitMinEqualToLimitMaxIsRejected() throws Exception {
         JsonNode catalogue = MAPPER.readTree("""
                 {"CREDIT_CARD_STANDARD":{"apr":19.9,"limitMin":1000,"limitMax":1000},
