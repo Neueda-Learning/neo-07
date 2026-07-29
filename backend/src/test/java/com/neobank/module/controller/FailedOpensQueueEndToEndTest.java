@@ -69,6 +69,8 @@ class FailedOpensQueueEndToEndTest {
     private AccountRecord seedFailedCase(String applicationId, Integer configVersion) {
         AccountRecord record = new AccountRecord(applicationId, "acc-" + applicationId);
         record.pinCoreConfig(configVersion);
+        record.recordOpeningInputs(
+                2500, true, null, "CREDIT_CARD_STANDARD", configVersion);
         record.markFailed(AccountReasonCode.ACC_CORE_UNAVAILABLE);
         return accountRecords.save(record);
     }
@@ -90,6 +92,9 @@ class FailedOpensQueueEndToEndTest {
         assertThat(after.getOutcome()).isEqualTo(AccountOutcome.OPENED);
         assertThat(after.getReasonCode()).isEqualTo(AccountReasonCode.ACC_OPENED);
         assertThat(after.getAccountId()).isNotBlank();
+        assertThat(after.getCreditAmount()).isEqualTo(2500);
+        assertThat(after.getProductCode()).isEqualTo("CREDIT_CARD_STANDARD");
+        assertThat(after.getProductVersion()).isEqualTo(configVersion);
 
         mvc.perform(get("/queue"))
                 .andExpect(status().isOk())
