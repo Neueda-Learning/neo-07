@@ -100,12 +100,19 @@ public final class AccountOpeningEngine {
         String agreementId = hasApprovedLimit ? creditTerms.agreementId() : null;
 
         for (int cycle = 1; cycle <= retryBudget; cycle++) {
-            CoreCallOutcome probeOutcome = probe.call(applicationId, cycle);
-            if (probeOutcome.result() == CoreAttemptResult.HIT) {
+            CoreCallOutcome probeOutcome = null;
+            try {
+                probeOutcome = probe.call(applicationId, cycle);
+            } catch (CoreCallException e) {
+                // ERROR or TIMEOUT on the probe itself does not prove the core is down for
+                // writes too — fall through and still attempt the OPEN call this cycle, exactly
+                // like a MISS would. Only an actual probe HIT short-circuits (adopt).
+            }
+            if (probeOutcome != null && probeOutcome.result() == CoreAttemptResult.HIT) {
                 return new EngineResult(AccountOutcome.OPENED, AccountReasonCode.ACC_DUPLICATE_PREVENTED,
                         probeOutcome.accountId(), creditAmount, creditAmountFallback, agreementId, Instant.now());
             }
-            // MISS: proceed to open this same cycle.
+            // MISS (or a caught probe failure): proceed to open this same cycle.
             try {
                 CoreCallOutcome openOutcome = open.call(applicationId, cycle);
                 if (openOutcome.result() == CoreAttemptResult.CREATED) {

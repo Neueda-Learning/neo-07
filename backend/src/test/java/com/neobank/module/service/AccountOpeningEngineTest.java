@@ -113,6 +113,34 @@ class AccountOpeningEngineTest {
     }
 
     @Test
+    void budgetExhaustedEndsFailedWhenTheProbeItselfErrorsEveryCycle() {
+        // The core being fully down (kill switch) fails PROBE too, not just OPEN — a probe
+        // ERROR/TIMEOUT must not short-circuit the cycle, it must still fall through to attempt
+        // OPEN, exactly like a MISS would (regression test for the bug where an unguarded probe
+        // exception escaped run() uncaught and left the case stuck IN_PROGRESS forever).
+        AtomicInteger probeCalls = new AtomicInteger();
+        AtomicInteger openCalls = new AtomicInteger();
+        AccountOpeningEngine.CoreCaller probe = scripted(probeCalls,
+                new CoreCallException(CoreAttemptResult.ERROR, "core call failed"),
+                new CoreCallException(CoreAttemptResult.ERROR, "core call failed"),
+                new CoreCallException(CoreAttemptResult.ERROR, "core call failed"));
+        AccountOpeningEngine.CoreCaller open = scripted(openCalls,
+                new CoreCallException(CoreAttemptResult.ERROR, "core call failed"),
+                new CoreCallException(CoreAttemptResult.ERROR, "core call failed"),
+                new CoreCallException(CoreAttemptResult.ERROR, "core call failed"));
+
+        EngineResult result = AccountOpeningEngine.run(3, "app-1240", 3000, CreditTerms.none(), probe, open);
+
+        assertThat(result.outcome()).isEqualTo(AccountOutcome.FAILED);
+        assertThat(result.reasonCode()).isEqualTo(AccountReasonCode.ACC_CORE_UNAVAILABLE);
+        assertThat(result.accountId()).isNull();
+        assertThat(result.openedAt()).isNull();
+        // 3 cycles, both calls attempted every cycle (AC#2's exact "6 attempts" checkpoint shape).
+        assertThat(probeCalls.get()).isEqualTo(3);
+        assertThat(openCalls.get()).isEqualTo(3);
+    }
+
+    @Test
     void creditTermsAbsentFallsBackToRequestedCreditLimit() {
         AccountOpeningEngine.CoreCaller probe = (id, cycle) -> new CoreCallOutcome(CoreAttemptResult.MISS, null, 1);
         AccountOpeningEngine.CoreCaller open = (id, cycle) -> new CoreCallOutcome(CoreAttemptResult.CREATED, "CC-1", 1);
