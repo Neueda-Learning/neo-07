@@ -53,10 +53,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (screen !== 'applications') return undefined;
+
     reload();
     const id = setInterval(reload, POLL_MS);
     return () => clearInterval(id);
-  }, [reload]);
+  }, [reload, screen]);
 
   const refreshHealth = useCallback(async () => {
     try {

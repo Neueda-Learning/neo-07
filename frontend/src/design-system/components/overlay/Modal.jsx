@@ -13,29 +13,32 @@ import { cx } from '../../internal/cx.js';
  * about.
  */
 export function Modal({ open, title, onClose, footer, wide = false, className, children, ...rest }) {
-  const panel = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return undefined;
+
     const onKey = (event) => {
-      if (event.key === 'Escape') onClose?.();
+      if (event.key === 'Escape') onCloseRef.current?.();
     };
     document.addEventListener('keydown', onKey);
-    panel.current?.focus();
+
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
   return (
     <div className="ds-scrim" onMouseDown={(event) => event.target === event.currentTarget && onClose?.()}>
       <div
-        ref={panel}
         className={cx('ds-modal', wide && 'ds-modal--wide', className)}
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : undefined}
-        tabIndex={-1}
         {...rest}
       >
         <header className="ds-modal__head">
