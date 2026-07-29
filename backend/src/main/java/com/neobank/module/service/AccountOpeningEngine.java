@@ -122,8 +122,17 @@ public final class AccountOpeningEngine {
                 // Any other non-exceptional open result is a failed cycle; continue the loop.
             } catch (CoreCallException e) {
                 if (e.result() == CoreAttemptResult.TIMEOUT) {
-                    CoreCallOutcome recoveryProbe = probe.call(applicationId, cycle);
-                    if (recoveryProbe.result() == CoreAttemptResult.HIT) {
+                    CoreCallOutcome recoveryProbe = null;
+                    try {
+                        recoveryProbe = probe.call(applicationId, cycle);
+                    } catch (CoreCallException recoveryFailure) {
+                        // The recovery probe erroring or timing out too does not prove the open
+                        // never landed — it just means this cycle cannot confirm either way.
+                        // Fall through and treat the cycle as failed, exactly like a MISS would;
+                        // never let a second unguarded core call escape run() uncaught (that is
+                        // the same bug class as the top-level probe, just on a different call).
+                    }
+                    if (recoveryProbe != null && recoveryProbe.result() == CoreAttemptResult.HIT) {
                         return new EngineResult(AccountOutcome.OPENED, AccountReasonCode.ACC_DUPLICATE_PREVENTED,
                                 recoveryProbe.accountId(), creditAmount, creditAmountFallback, agreementId,
                                 Instant.now());

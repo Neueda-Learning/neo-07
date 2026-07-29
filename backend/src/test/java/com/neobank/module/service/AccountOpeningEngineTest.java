@@ -141,6 +141,33 @@ class AccountOpeningEngineTest {
     }
 
     @Test
+    void aRecoveryProbeThatAlsoErrorsFailsTheCycleInsteadOfEscapingUncaught() {
+        // Regression test: the recovery probe fired after an OPEN timeout was itself unguarded —
+        // if the core is down for reads too at that exact moment, the exception used to escape
+        // run() uncaught (same bug class as the top-level probe, just a step later). It must
+        // instead fail just this cycle and let the loop continue to the next one.
+        AtomicInteger probeCalls = new AtomicInteger();
+        AtomicInteger openCalls = new AtomicInteger();
+        AccountOpeningEngine.CoreCaller probe = scripted(probeCalls,
+                new CoreCallOutcome(CoreAttemptResult.MISS, null, 5),
+                new CoreCallException(CoreAttemptResult.ERROR, "recovery probe failed"),
+                new CoreCallOutcome(CoreAttemptResult.MISS, null, 5),
+                new CoreCallException(CoreAttemptResult.ERROR, "recovery probe failed"));
+        AccountOpeningEngine.CoreCaller open = scripted(openCalls,
+                new CoreCallException(CoreAttemptResult.TIMEOUT, "core call timed out"),
+                new CoreCallException(CoreAttemptResult.TIMEOUT, "core call timed out"));
+
+        EngineResult result = AccountOpeningEngine.run(2, "app-recovery-fail", 3000, CreditTerms.none(), probe, open);
+
+        assertThat(result.outcome()).isEqualTo(AccountOutcome.FAILED);
+        assertThat(result.reasonCode()).isEqualTo(AccountReasonCode.ACC_CORE_UNAVAILABLE);
+        assertThat(result.accountId()).isNull();
+        // 2 cycles x (1 probe + 1 recovery probe) = 4 probe calls, 1 open call per cycle = 2.
+        assertThat(probeCalls.get()).isEqualTo(4);
+        assertThat(openCalls.get()).isEqualTo(2);
+    }
+
+    @Test
     void creditTermsAbsentFallsBackToRequestedCreditLimit() {
         AccountOpeningEngine.CoreCaller probe = (id, cycle) -> new CoreCallOutcome(CoreAttemptResult.MISS, null, 1);
         AccountOpeningEngine.CoreCaller open = (id, cycle) -> new CoreCallOutcome(CoreAttemptResult.CREATED, "CC-1", 1);
