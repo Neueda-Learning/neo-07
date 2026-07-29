@@ -1,23 +1,29 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, DataTable, EmptyState, MetricTile, PageHeader, Toolbar } from '../design-system';
-import { time } from '../status.js';
+import { Alert, Badge, DataTable, EmptyState, MetricTile, PageHeader, Toolbar } from '../design-system';
+import { duplicateKindTone, time } from '../status.js';
 import { api } from '../api.js';
+import CaseDetailScreen from './CaseDetailScreen.jsx';
 
 const POLL_MS = 5000;
+
+const KIND_LABEL = {
+  CORE_DUPLICATE: 'core duplicate',
+  MISSING_AT_CORE: 'missing at core',
+};
 
 /**
  * UC-06 — Duplicate Report.
  *
  * The correct content of this screen is nothing (AC2/AC3) — it is a live cross-check,
- * recomputed on every visit, reading the core's own account store rather than trusting this
- * module's table alone (AC4). Empty is not "no data"; empty is the passing result, and the
- * screen says so. A core that cannot be reached is never rendered as a silently empty report
- * (AC5) — that is an alarm of its own, distinct from "zero duplicates found".
- *
- * `onOpenCase` is how a row's case attempt log is one click away (AC6) — only offered when the
- * duplicate has a matching module record; an orphan (core-only) duplicate has no case to open.
+ * recomputed on every visit, reading both sides of the module/core boundary rather than
+ * trusting either alone (AC4): a `CORE_DUPLICATE` row is a reference the core itself shows more
+ * than one account for; a `MISSING_AT_CORE` row is a case this module believes is OPENED whose
+ * accountId the core's own list for that reference doesn't actually contain — a duplicate the
+ * core-only view alone could never catch. Empty is not "no data"; empty is the passing result,
+ * and the screen says so. A core that cannot be reached is never rendered as a silently empty
+ * report (AC5) — that is an alarm of its own, distinct from "zero duplicates found".
  */
-export default function DuplicateReportScreen({ onOpenCase }) {
+export default function DuplicateReportScreen() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
@@ -44,9 +50,15 @@ export default function DuplicateReportScreen({ onOpenCase }) {
     { key: 'applicationId', header: 'Application', mono: true },
     { key: 'reference', header: 'Case reference', mono: true, render: (r) => r.reference ?? '— no module record' },
     {
+      key: 'kind',
+      header: 'Kind',
+      tight: true,
+      render: (r) => <Badge tone={duplicateKindTone(r.kind)}>{KIND_LABEL[r.kind] ?? r.kind}</Badge>,
+    },
+    {
       key: 'coreAccountIds',
       header: 'Core account ids',
-      render: (r) => r.coreAccountIds.join(', '),
+      render: (r) => (r.coreAccountIds.length > 0 ? r.coreAccountIds.join(', ') : '—'),
     },
   ];
 
@@ -78,7 +90,8 @@ export default function DuplicateReportScreen({ onOpenCase }) {
           {duplicates.length > 0 && (
             <Alert tone="negative" title="Control failure">
               {duplicates.length} application{duplicates.length === 1 ? '' : 's'} has more than one core
-              account. This should never happen — investigate before anything else.
+              account, or a record this module believes is opened that the core cannot confirm. This
+              should never happen — investigate before anything else.
             </Alert>
           )}
 
@@ -91,29 +104,29 @@ export default function DuplicateReportScreen({ onOpenCase }) {
             expandedKey={expanded}
             renderExpanded={(r) => (
               <>
-                <strong>{r.coreAccountIds.length}</strong> core accounts for{' '}
-                <strong>{r.applicationId}</strong>: {r.coreAccountIds.join(', ')}
-                {r.reference ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    style={{ marginLeft: 'var(--ds-space-4)' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenCase?.(r.applicationId);
-                    }}
-                  >
-                    View case attempt log →
-                  </Button>
+                {r.kind === 'MISSING_AT_CORE' ? (
+                  <>
+                    This module's own record for <strong>{r.applicationId}</strong> believes it holds an
+                    account that the core's own list for this reference does not contain.
+                  </>
                 ) : (
-                  ' — no matching row in this module\u2019s own table either.'
+                  <>
+                    <strong>{r.coreAccountIds.length}</strong> core accounts for{' '}
+                    <strong>{r.applicationId}</strong>: {r.coreAccountIds.join(', ')}
+                    {!r.reference && ' — no matching row in this module’s own table either.'}
+                  </>
+                )}
+                {r.reference && (
+                  <div style={{ marginTop: '1rem' }}>
+                    <CaseDetailScreen applicationId={r.applicationId} />
+                  </div>
                 )}
               </>
             )}
             empty={
               <EmptyState title="Empty — the control is working">
-                No reference has more than one core account. This is the report's correct,
-                everyday state.
+                No reference has more than one core account, and every OPENED case matches what the
+                core shows. This is the report's correct, everyday state.
               </EmptyState>
             }
           />

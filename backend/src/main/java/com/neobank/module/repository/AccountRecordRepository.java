@@ -18,6 +18,9 @@ public interface AccountRecordRepository extends JpaRepository<AccountRecord, St
 
     List<AccountRecord> findAllByOrderByCreatedAtDesc();
 
+    /** UC-06's module-side half of the cross-check: every case the module believes is OPENED. */
+    List<AccountRecord> findAllByOutcome(AccountOutcome outcome);
+
     List<AccountRecord> findTop10ByApplicationIdContainingIgnoreCaseOrderByCreatedAtDesc(
             String applicationId);
 

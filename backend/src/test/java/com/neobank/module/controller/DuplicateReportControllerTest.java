@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.neobank.module.dto.DuplicateReportResponse;
 import com.neobank.module.dto.DuplicateRow;
+import com.neobank.module.model.DuplicateKind;
 import com.neobank.module.service.DuplicateReportService;
 import java.time.Instant;
 import java.util.List;
@@ -41,7 +42,7 @@ class DuplicateReportControllerTest {
     void aDuplicateRowIsReturnedWithBothAccountIds() throws Exception {
         when(service.findDuplicates()).thenReturn(new DuplicateReportResponse(
                 Instant.now(), 3,
-                List.of(new DuplicateRow("app-dupe", "acc-000900", List.of("CC-1", "CC-2")))));
+                List.of(new DuplicateRow("app-dupe", "acc-000900", List.of("CC-1", "CC-2"), DuplicateKind.CORE_DUPLICATE))));
 
         mvc.perform(get("/reports/duplicates"))
                 .andExpect(status().isOk())

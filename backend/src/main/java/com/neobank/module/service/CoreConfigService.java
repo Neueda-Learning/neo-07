@@ -69,10 +69,17 @@ public class CoreConfigService {
             JsonNode limitMax = entry.get("limitMax");
             if (limitMin == null || limitMax == null) {
                 errors.add(productCode + " must have limitMin and limitMax");
+            } else if (!limitMin.isIntegralNumber() || !limitMax.isIntegralNumber()) {
+                errors.add(productCode + " limitMin and limitMax must be integers");
             } else if (limitMin.asInt() >= limitMax.asInt()) {
                 errors.add(productCode + " limitMin must be less than limitMax");
             }
         }
+        catalogue.fieldNames().forEachRemaining(productCode -> {
+            if (!REQUIRED_PRODUCT_CODES.contains(productCode)) {
+                errors.add("catalogue contains unknown product code: " + productCode);
+            }
+        });
         return errors;
     }
 

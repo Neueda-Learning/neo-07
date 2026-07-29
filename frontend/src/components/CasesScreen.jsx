@@ -6,13 +6,10 @@ import CaseDetailScreen from './CaseDetailScreen.jsx';
  * UC-02/UC-03's entry point: an id-search box that opens the Account Detail screen. Deliberately
  * minimal — a full board with name search is UC-01's own screen (Account Board); this one exists
  * so Case Detail has somewhere to be reached from in this branch.
- *
- * `initialApplicationId` lets another screen deep-link straight into a case (e.g. the Duplicate
- * Report's "view case" — UC-06 AC#6) without this screen needing to know who's linking to it.
  */
-export default function CasesScreen({ initialApplicationId }) {
-  const [query, setQuery] = useState(initialApplicationId ?? '');
-  const [applicationId, setApplicationId] = useState(initialApplicationId ?? null);
+export default function CasesScreen() {
+  const [query, setQuery] = useState('');
+  const [applicationId, setApplicationId] = useState(null);
 
   const onSubmit = (e) => {
     e.preventDefault();

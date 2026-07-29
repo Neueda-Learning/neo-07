@@ -11,16 +11,12 @@ import {
   SearchInput,
   Toolbar,
 } from '../design-system';
-import { statusTone, STATUSES, time } from '../status.js';
+import { outcomeTone, OUTCOMES, time } from '../status.js';
 
-const FILTERS = ['All', ...STATUSES];
+const FILTERS = ['All', ...OUTCOMES];
 
 /**
- * Everything this module has answered.
- *
- * ⚠️ Three columns, because the placeholder table behind it has three columns. When you replace
- * `demo_showcase` with your own table, this is the screen that shows it off — the operator UI is a
- * graded deliverable, so add the columns, filters and detail views your business topic needs.
+ * Everything this module has answered — one row per account_record, newest first.
  *
  * The board follows the platform shape (design-system/DESIGN.md § "Board"): a header stating the
  * screen's rules, a toolbar that narrows, a capped table. The 10-row cap and its footnote come from
@@ -33,7 +29,7 @@ export default function RequestsScreen({ requests, error, info }) {
   const counts = useMemo(
     () =>
       requests.reduce((acc, r) => {
-        acc[r.status] = (acc[r.status] ?? 0) + 1;
+        acc[r.outcome] = (acc[r.outcome] ?? 0) + 1;
         return acc;
       }, {}),
     [requests]
@@ -42,7 +38,7 @@ export default function RequestsScreen({ requests, error, info }) {
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return requests.filter((r) => {
-      if (filter !== 'All' && r.status !== filter) return false;
+      if (filter !== 'All' && r.outcome !== filter) return false;
       if (!needle) return true;
       return r.applicationId.toLowerCase().includes(needle);
     });
@@ -50,11 +46,12 @@ export default function RequestsScreen({ requests, error, info }) {
 
   const columns = [
     { key: 'applicationId', header: 'Application', mono: true },
+    { key: 'reference', header: 'Reference', mono: true },
     {
-      key: 'status',
+      key: 'outcome',
       header: 'Status',
       tight: true,
-      render: (r) => <Badge tone={statusTone(r.status)}>{r.status}</Badge>,
+      render: (r) => <Badge tone={outcomeTone(r.outcome)}>{r.outcome}</Badge>,
     },
     { key: 'createdAt', header: 'Answered', render: (r) => time(r.createdAt) },
   ];
@@ -82,7 +79,7 @@ export default function RequestsScreen({ requests, error, info }) {
 
       <Grid cols={2} min={180} style={{ marginBottom: 'var(--ds-space-6)' }}>
         <MetricTile label="Seen" value={requests.length} />
-        <MetricTile label="Accepted" value={counts.ACCEPTED ?? 0} tone="positive" />
+        <MetricTile label="Opened" value={counts.OPENED ?? 0} tone="positive" />
       </Grid>
 
       <Toolbar>

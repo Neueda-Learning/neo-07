@@ -8,8 +8,11 @@ import static org.mockito.Mockito.when;
 import com.neobank.module.controller.CoreUnavailableException;
 import com.neobank.module.core.CoreAccountView;
 import com.neobank.module.dto.DuplicateReportResponse;
+import com.neobank.module.model.AccountOutcome;
+import com.neobank.module.model.AccountReasonCode;
 import com.neobank.module.model.AccountRecord;
 import com.neobank.module.model.CoreConfig;
+import com.neobank.module.model.DuplicateKind;
 import com.neobank.module.repository.AccountRecordRepository;
 import com.neobank.module.repository.CoreConfigRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +45,8 @@ class DuplicateReportServiceTest {
         coreClient = mock(CoreOpsClient.class);
         service = new DuplicateReportService(coreConfigs, accountRecords, coreClient);
         when(coreConfigs.findTopByOrderByVersionDesc()).thenReturn(Optional.of(config()));
+        // No OPENED records by default — most tests are only exercising the core-side check.
+        when(accountRecords.findAllByOutcome(AccountOutcome.OPENED)).thenReturn(List.of());
     }
 
     @Test
@@ -74,6 +79,7 @@ class DuplicateReportServiceTest {
         assertThat(row.applicationId()).isEqualTo("app-dupe");
         assertThat(row.reference()).isEqualTo("acc-000900");
         assertThat(row.coreAccountIds()).containsExactlyInAnyOrder("CC-1", "CC-2");
+        assertThat(row.kind()).isEqualTo(DuplicateKind.CORE_DUPLICATE);
     }
 
     @Test
@@ -87,6 +93,42 @@ class DuplicateReportServiceTest {
 
         assertThat(report.duplicates()).hasSize(1);
         assertThat(report.duplicates().get(0).reference()).isNull();
+    }
+
+    @Test
+    void anOpenedRecordWhoseAccountIdTheCoreDoesNotShowIsAMissingAtCoreFinding() {
+        // The module believes "app-ghost" is OPENED with CC-999, but the core's own list for
+        // that reference doesn't contain that account id at all — a duplicate the core-only view
+        // could never catch on its own (the whole point of AC4's two-sided cross-check).
+        when(coreClient.listAccounts("http://core")).thenReturn(List.of(
+                new CoreAccountView("CC-1", "app-solo", Instant.now())));
+        AccountRecord ghost = new AccountRecord("app-ghost", "acc-ghost01");
+        ghost.open("CC-999", 2800, false, "agr-1", "CREDIT_CARD_REWARDS", null,
+                AccountReasonCode.ACC_OPENED, Instant.now());
+        when(accountRecords.findAllByOutcome(AccountOutcome.OPENED)).thenReturn(List.of(ghost));
+
+        DuplicateReportResponse report = service.findDuplicates();
+
+        assertThat(report.duplicates()).hasSize(1);
+        var row = report.duplicates().get(0);
+        assertThat(row.applicationId()).isEqualTo("app-ghost");
+        assertThat(row.reference()).isEqualTo("acc-ghost01");
+        assertThat(row.coreAccountIds()).isEmpty();
+        assertThat(row.kind()).isEqualTo(DuplicateKind.MISSING_AT_CORE);
+    }
+
+    @Test
+    void anOpenedRecordWhoseAccountIdTheCoreDoesShowIsNotAFalsePositive() {
+        when(coreClient.listAccounts("http://core")).thenReturn(List.of(
+                new CoreAccountView("CC-42", "app-fine", Instant.now())));
+        AccountRecord fine = new AccountRecord("app-fine", "acc-fine01");
+        fine.open("CC-42", 2800, false, "agr-1", "CREDIT_CARD_REWARDS", null,
+                AccountReasonCode.ACC_OPENED, Instant.now());
+        when(accountRecords.findAllByOutcome(AccountOutcome.OPENED)).thenReturn(List.of(fine));
+
+        DuplicateReportResponse report = service.findDuplicates();
+
+        assertThat(report.duplicates()).isEmpty();
     }
 
     @Test

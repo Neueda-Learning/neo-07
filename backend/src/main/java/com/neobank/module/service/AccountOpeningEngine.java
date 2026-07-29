@@ -106,7 +106,10 @@ public final class AccountOpeningEngine {
             } catch (CoreCallException e) {
                 // ERROR or TIMEOUT on the probe itself does not prove the core is down for
                 // writes too — fall through and still attempt the OPEN call this cycle, exactly
-                // like a MISS would. Only an actual probe HIT short-circuits (adopt).
+                // like a MISS would. Only an actual probe HIT short-circuits (adopt). AC#2's
+                // exact checkpoint ("6 attempts: 3 cycles, all errors") requires OPEN to still be
+                // attempted every cycle even when the probe itself errors — a `continue` here
+                // would only ever produce 3 attempts (probes alone), never matching that value.
             }
             if (probeOutcome != null && probeOutcome.result() == CoreAttemptResult.HIT) {
                 return new EngineResult(AccountOutcome.OPENED, AccountReasonCode.ACC_DUPLICATE_PREVENTED,

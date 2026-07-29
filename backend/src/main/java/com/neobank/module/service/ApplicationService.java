@@ -48,34 +48,50 @@ public class ApplicationService {
     }
 
     /**
-     * Hand the work to the pool and return immediately.
+     * Commit the durable row on the request thread, then hand the engine off to the pool.
      *
-     * <p>The controller calls this and then writes the {@code 202}. <b>Nothing here may block:</b>
-     * the orchestrator is holding a connection open, and a module that does its work on the request
-     * thread turns a fast journey into a slow one.</p>
+     * <p>UC-00 AC#2 requires the row to exist <em>before</em> the {@code 202} is sent — "a crash
+     * right after the ack loses nothing." {@link #createAccountRecordIfAbsent} is a single fast
+     * DB read-then-insert with no I/O, so it runs here, synchronously; only the engine call
+     * ({@link AccountOpeningService#open} / {@code #replay}, which does real I/O against the mock
+     * core and the orchestrator) is dispatched to the executor. The controller calls this and then
+     * writes the {@code 202} — by the time this method returns, the row is already committed, not
+     * just scheduled.</p>
      */
     public void processApplicationAsync(ApplicationRequest request) {
-        executor.execute(() -> processApplication(request));
+        String applicationId = request.applicationId();
+        log.info("Received {}", request.summary());
+        Insertion insertion = createAccountRecordIfAbsent(applicationId);
+        executor.execute(() -> runEngine(applicationId, request, insertion));
     }
 
     /**
      * Log receipt, commit the one durable row this application id gets, then hand off to the
      * engine — but only when this call is the one that freshly created the row.
      *
-     * <p>Package-private on purpose — the outside world goes through
-     * {@link #processApplicationAsync}, and a unit test can call this directly on the test thread,
-     * which is what makes it testable without a thread pool.</p>
-     *
-     * <p><b>Deliberately not {@code @Transactional}.</b> The engine call below does real I/O
-     * (the mock core, the orchestrator callback) and must never run inside a transaction wrapping
-     * the row commit. {@link #createAccountRecordIfAbsent} carries its own narrow
-     * {@code @Transactional} around the read-then-insert only.</p>
+     * <p>Package-private on purpose — a unit test can call this directly on the test thread to
+     * exercise the whole synchronous path (insert + engine) in one call, without a thread pool.
+     * The real entry point, {@link #processApplicationAsync}, only differs in dispatching the
+     * engine half to the executor instead of running it inline.</p>
      */
     void processApplication(ApplicationRequest request) {
         String applicationId = request.applicationId();
         log.info("Received {}", request.summary());
+        Insertion insertion = createAccountRecordIfAbsent(applicationId);
+        runEngine(applicationId, request, insertion);
+    }
+
+    /**
+     * The engine half of request processing — real I/O (the mock core, the orchestrator
+     * callback), always run off the request thread by {@link #processApplicationAsync}.
+     *
+     * <p><b>Deliberately not {@code @Transactional}.</b> This must never run inside a transaction
+     * wrapping the row commit. {@link #createAccountRecordIfAbsent} carries its own narrow
+     * {@code @Transactional} around the read-then-insert only, already committed by the time this
+     * runs.</p>
+     */
+    private void runEngine(String applicationId, ApplicationRequest request, Insertion insertion) {
         try {
-            Insertion insertion = createAccountRecordIfAbsent(applicationId);
             if (insertion.fresh()) {
                 accountOpeningService.open(request);
             } else {
